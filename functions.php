@@ -1,18 +1,17 @@
 <?php
 
-    //Initialize the update checker.
-    require_once dirname( __FILE__ ) . '/includes/theme-updates/theme-update-checker.php';
-    $update_checker = new ThemeUpdateChecker(
-        'Starter',
-        'https://raw.githubusercontent.com/JustinTheClouds/Wordpress-Starter-Theme/master/version-info.json'
-    );
-
+// TODO pass theme check
+// TODO finish comments.php markup
 // TODO add author header meta image/name, link to microdata meta
 // TODO move framework default options to default and otheres to starter theme
 // TODO move to constructor
 // TODO apply text domain functions to all methods, create JTCF::__/_e for quicker use
 global $JTCFDefaults;
 $JTCFDefaults = array(
+    // Auto update child
+    // This should be the link to the version info file
+    'updater'    => null,
+    'cleanMode' => false,
     // REMOVE this is not needed since it is no dynamic. Make calls to this static
     'textdomain'     => 'justintheclouds',
     // This language will default to using the frameworks own text domain
@@ -22,6 +21,20 @@ $JTCFDefaults = array(
     // TODO Verify this works and is proper, ask http://ottopress.com/2012/internationalization-youre-probably-doing-it-wrong/ ?
     // TODO pull all lang vars to here
     'language' => array(
+        // Articles
+        'author_link_title' => __('More articles written by %s', 'justintheclouds'),
+        'entry_missing_excerpt_and_content' => '<b>' . __('The post "%s" seems to have no content or excerpt written yet!', 'justintheclouds') . '</b>',
+        'posted_in' => __('Posted in:', 'justintheclouds'),
+        // Comments
+        'comments_title' => function() {
+            return _n( 'One thought on &ldquo;%2$s&rdquo;', '%1$s thoughts on &ldquo;%2$s&rdquo;', get_comments_number(), 'justintheclouds');
+        },
+        'comments_navigation_next' => __( 'Newer Comments &rarr;', 'justintheclouds' ),
+        'comments_navigation_previous' => __( '&larr; Olders Comments', 'justintheclouds'),
+        'comments_navigation' => __('Comment navigation', 'justintheclouds'),
+        'comments_closed' => __('Comments are closed.', 'justintheclouds'),
+        'comments_empty' => __('No Comments yet, your thoughts are welcome!', 'justintheclouds'),
+        // Admin Options Page
         'Design' => __('Design', 'justintheclouds'),
         'Contact' => __('Contact', 'justintheclouds'),
         'Header Meta' => __('Header Meta', 'justintheclouds'),
@@ -30,36 +43,800 @@ $JTCFDefaults = array(
         'Microdata' => __('Microdata', 'justintheclouds')
     ),
     'folders'        => array(
-        'styles'       => '/css',
-        'scripts'      => '/js',
+        'styles'       => 'css',
+        'scripts'      => 'js',
         'languages'    => get_template_directory() . '/languages'
     ),
-    'styles'         => array(
-        '_enqueue'     => true
+    // Register styles, only file name is needed or an array of register args
+    // these will be registered and enqueued on wp_enqueue_scripts
+    'styles'     => array(
+        // Enqueue after registering, 'true' is the default
+        '_enqueue' => true,
+        // TODO _autoDepend; This will cause styles enqueued to depend upon the previous enqueued style
+        // _autoDepend = true,
+        // Or an array of style name that should be enqueued
+        // '_enqueue' => array('stylename2'),
+        'base' => array('base', get_template_directory_uri() . '/css/base.css'),
+        'wp-styles' => array('wp-styles', get_template_directory_uri() . '/css/wp-styles.css'),
+        // Auto enquueu themes main style sheet
+        'style' => array('style', get_stylesheet_directory_uri() . '/style.css', array('base', 'wp-styles')),
+        // Example using all args, works just as wp_enqueue_style()
+        // array('style', get_stylesheet_directory_uri() . '/style.css', array('stylename1'), '1.2.3', 'all'),
+        // 'stylename1'
     ),
     'scripts'         => array(
         '_enqueue'     => true
     ),
-    'hooks' => array(
-        'after_theme_setup' => array('JTCF', 'hookAfterThemeSetup')
-        '
+    // Short hand widget definitiion
+    'widgets'    => array(
+        // Define default settings for all widgets
+        '_defaults' => array(
+            'before_widget' => '<div id="%1$s" class="widget %2$s">',
+            'after_widget'  => '</div>',
+            'before_title'  => '<h5 class="widget-title">',
+            'after_title'   => '</h5>'
+        ),
+        // Shorthand widget definition, will use the default defined above
+        'Sidebar',
+        // Or define the defaults you'd like to change on a per widget basis
+        // 'Sidebar Bottom' => array(
+        //     'before_title'  => '<h6 class="widget-title">',
+        //     'after_title'   => '</h6>'
+        // )
     ),
+    'hooks' => array(
+        /** 
+         * Keys are added to these filters only to avoid them being overwritten
+         * If you'd like to overwrite/remove an applied filter, just pass in
+         * false/your function using the key of the filter to remove.
+         */
+        // These are core framework hooks and should not be removed
+        // unless you know what you are doing.
+        'core_after_setup_theme' => array(
+            'after_setup_theme',
+            array('JTCF', 'hookAfterThemeSetup')
+        ),
+        'core_wp_enqueue_scripts' => array(
+            'wp_enqueue_scripts',
+            array('JTCF', 'hookWPEnqueueScripts')
+        ),
+        'core_widgets_init' => array(
+            'widgets_init',
+            array('JTCF', 'hookWidgetsInit')
+        ),
+        'add_analytics_to_footer' => array(
+            'wp_footer',
+            function() {
+                // Google Analytics
+                if($_SERVER['HTTP_HOST'] != 'localhost' && of_get_option('apis_ga_id') && of_get_option('apis_ga_domain')) {
+                    echo '<!-- Google analytics-->';
+                    echo '<script>
+              (function(i,s,o,g,r,a,m){i[\'GoogleAnalyticsObject\']=r;i[r]=i[r]||function(){
+              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,\'script\',\'//www.google-analytics.com/analytics.js\',\'ga\');
+              ga(\'create\', \'' . of_get_option('apis_ga_id') . '\', \'' . of_get_option('apis_ga_domain') . '\');
+              ga(\'send\', \'pageview\');
+            </script>
+            <!-- Google analytics-->';
+                }
+            }
+        ),
+        // We use this hook to define the doctype
+        'define_doctype' => array(
+            'JTCF_beforeOpenSectionHtml',
+            array('JTCF', 'outputDoctype')
+        ),
+        // Add head meta content
+        'add_head_meta' => array(
+            'JTCF_afterOpenSectionHead',
+            array('JTCF', 'outputHead')
+        ),
+        // Add content after main content opening section
+        'add_archive_heading_after_open_main' => array(
+            'JTCF_afterOpenSectionMain',
+            function() {
+                // This will output the archive title if on an archive page
+                if(is_archive()) {
+                    
+                    // Hack. Set $post so that the_date() works.
+                    global $posts;
+                    $post = $posts[0];
+
+                    // If the home blog page
+                    if (is_home()) {
+
+                    // TODO support swapping of theese lang vars
+                    // If this is a category archive
+                    } elseif (is_category()) {
+                        $title = __('Archive for the', 'justintheclouds') . " &#8216; " . single_cat_title('', false) . " &#8217; " . __('Category', 'justintheclouds');
+
+                    // If this is a tag archive
+                    } elseif( is_tag() ) {
+                        $title = __('Posts Tagged', 'justintheclouds') . " &#8216; " . single_tag_title('', false) . " &#8217;";
+
+                    // If this is a daily archive
+                    } elseif (is_day()) {
+                        $title = __('Archive for', 'justintheclouds') . ' ' . get_the_time('F jS, Y');
+
+                    // If this is a monthly archive
+                    } elseif (is_month()) {
+                        $title = __('Archive for', 'justintheclouds') . ' ' . get_the_time('F, Y');
+
+                    // If this is a yearly archive
+                    } elseif (is_year()) {
+                       $title = __('Archive for', 'justintheclouds') . ' ' . get_the_time('Y');
+
+                    // If this is an author archive
+                    } elseif (is_author()) {
+                        $title = __('Author Archive for', 'justintheclouds') . ' ' . get_the_author();
+
+                    // If this is a paged archive
+                    } elseif (isset($_GET['paged']) && !empty($_GET['paged'])) {
+                        $title = __('Blog Archives', 'justintheclouds');
+                    }
+
+                    $heading = JTCF::$_hasH1 ? (JTCF::$_hasH2 ? 'h3' : 'h2') : 'h1';
+
+                    if($heading == 'h1') JTCF::$_hasH1 = true;
+
+                    if(isset($title)) echo "<$heading>$title</$heading>";
+                    
+                }
+            }
+        ),
+        'output_wp_nav_menu' => array(
+            'JTCF_afterOpenSectionNav',
+            function() {
+                // Get location
+                $location = substr(JTCF::$currentLocation, 0, strrpos(JTCF::$currentLocation, "/"));
+                $location = substr(strrchr($location, "/"), 1);
+                // If this nav location exists
+                if(array_key_exists($location, JTCF::get('menus'))) {
+                    $defaults = array('container' => false, 'theme_location' => $location);
+                    wp_nav_menu($defaults);
+                }
+            }
+        ),
+        'add_post_nav_before_main_close' => array(
+            'JTCF_beforeCloseSectionMain',
+            function() {
+                if(is_single()) {
+                    echo '<ul>';
+                    if(get_next_post_link()) echo '	<li rel="next">'. call_user_func('get_next_post_link') .'</li>';
+                    if(get_previous_post_link()) echo '	<li rel="prev">'. call_user_func('get_previous_post_link') .'</li>';
+                    echo '</ul>';
+                }      
+            }
+        ),
+        'add_pagination_before_main_close' => array(
+            'JTCF_beforeCloseSectionMain',
+            function() {
+                global $wp_query;           
+                $args = array(
+                    'base' => str_replace( 999999999, '%#%', esc_url( get_pagenum_link( 999999999 ) ) ),
+                    'format' => '?paged=%#%',
+                    'current' => max( 1, get_query_var('paged') ),
+                    'total' => $wp_query->max_num_pages
+                );
+                echo paginate_links($args);
+            }
+        ),
+        'call_wp_footer_before_body_close' => array(
+            'JTCF_beforeCloseSectionBody',
+            function() {
+                wp_footer();
+            }
+        )
+    ),
+    'filters' => array(
+        /** 
+         * Keys are added to these filters only to avoid them being overwritten
+         * If you'd like to overwrite/remove an applied filter, just pass in
+         * false/your function using the key of the filter to remove.
+         */
+        // Format document title
+        'format_wp_title' => array(
+            'wp_title',
+            function($title, $sep) {
+                global $paged, $page;
+
+                if ( is_feed() ) {
+                    return $title;
+                }
+
+                // Add the site name.
+                $title .= get_bloginfo( 'name', 'display' );
+
+                // Add the site description for the home/front page.
+                $site_description = get_bloginfo( 'description', 'display' );
+                if ( $site_description && ( is_home() || is_front_page() ) ) {
+                    $title = "$title $sep $site_description";
+                }
+
+                // Add a page number if necessary.
+                if ( $paged >= 2 || $page >= 2 ) {
+                    $title = "$title $sep " . sprintf( __( 'Page %s', 'justintheclouds' ), max( $paged, $page ) );
+                }
+
+                return $title;
+            },
+            10,
+            2
+        ),
+        // Format bloginfo data returned based on location
+        'format_bloginfo' => array(
+            'bloginfo',
+            function($value, $show) {
+                
+                // Alter how the site title is output in the header
+                if(JTCF::$currentLocation != '/html/body/header') return $value;
+                
+                if($show == 'name') {
+                
+                    // Home page should use h1
+                    if(is_home() || is_front_page()) {
+                        $wrap = "h1";
+                        JTCF::$_hasH1 = true;
+                    } else {
+                        $wrap = "p";
+                    }
+                    // Output title
+                    $output = "<$wrap>" . '<a href="' . esc_url( home_url( '/' ) ) . '" title="' . esc_attr( $value ) . '" rel="home"';
+
+                    // Add itemprop if available
+                    $output .= JTCF::getMicrodata('header', 'itemprop', 'url');
+
+                    $output .= '><span ' . ( of_get_option('design-logo') ? 'class="screen-reader-text" ' : '');
+
+                    // Add itemprop if available
+                    $output .= JTCF::getMicrodata('header', 'itemprop', 'name');
+
+                    $output .=  '>' . get_bloginfo( 'name' ) . '</span>';
+
+                    if(of_get_option('design-logo')) {
+                        $output .= '<img src="' . of_get_option('design-logo') . '"';
+
+                        // Add itemprop if available
+                        $output .= JTCF::getMicrodata('header', 'itemprop', 'image');
+
+                        $output .= ' title="' . $value  . '" />';
+                    }
+
+                    $output .= '</a>' . "</$wrap>";
+                    
+                } elseif($show == 'description') {
+                    
+                    // If no tagline, output nothing
+                    if(empty($value)) {
+                        return;
+                    }
+                    // Homepage tagline should be h2
+                    if(is_home() || is_front_page()) {
+                        $wrap = "h2";
+                        JTCF::$_hasH2 = true;
+                    } else {
+                        $wrap = "p";
+                    }
+                    // Output tagline
+                    $output = '<' . $wrap;
+
+                    // Add itemprop if available
+                    $output .= JTCF::getMicrodata('header', 'itemprop', 'tagline');
+
+                    // Finish tagline
+                    $output .= '>' . get_bloginfo( 'description' ) . "</$wrap>";
+
+                }
+                
+                return $output;
+
+            },
+            10,
+            2
+        ),
+        // Intercept wp_nav_menu calls
+        'route_wp_nav_menu_to_section' => array(
+            'pre_wp_nav_menu',
+            function($null, $args) {
+                // If we aren't already in a nav location
+                if(strpos(JTCF::$currentLocation, '/nav') === false) {
+                    // Route through nav section
+                    JTCF::section('nav', array(), $args);
+                    return '';
+                }
+            },
+            10,
+            2
+        ),
+        // Wrap navs in nav tags
+        'format_wp_nav_menu' => array(
+            'wp_nav_menu',
+            function($menu) {
+                // If we are already in a nav, we don't need to warp in nav tags
+                if(strpos(JTCF::$currentLocation, '/nav') === false) {
+                    $menu = '<nav role="navigation"' . JTCF::getMicrodata('nav', 'scope') . '>' . $menu . '</nav>';
+                }
+                return $menu;
+            }
+        ),
+        // Add heading tags around the title and links the title if not on single page
+        'format_the_title' => array(
+            'the_title',
+            function($title) {
+
+                // Skip filters on admin
+                if(is_admin()) return $title;
+                
+                if(in_the_loop() && strpos(JTCF::$currentLocation, '/article') !== false) {
+
+                    if(is_single() || is_page()) {
+
+                        if(JTCF::$_hasH1) return;
+                        JTCF::$_hasH1 = true;
+                        return '<h1' . JTCF::getClass('entry-title') . '>' . $title . '</h1>';
+
+                    } else {
+
+                        $heading = JTCF::$_hasH1 ? (JTCF::$_hasH2 ? 'h3' : 'h2') : 'h1';
+                        return "<$heading" . JTCF::getClass('entry-title') . ">" . '<a href="' . get_the_permalink() . '">' . $title . '</a>' . "</$heading>";
+
+                    }
+
+                }
+                
+                return $title;
+            }
+        ),
+        // Convert the content to execerpts automatically if excerpts dont exist
+        'format_the_content' => array(
+            'the_content',
+            function($html) {
+                global $post;
+                if(is_home() || is_archive()) {
+                    if(!$post->post_excerpt) {
+                        preg_match("/<p>(.*)<\/p>/", $html, $matches);
+                        if(isset($matches[1])) {
+                            $html = '<p' . JTCF::getClass('entry-excerpt') . '>' . strip_tags($matches[1]) . '</p>';
+                        } else {
+                            $html = '<p' . JTCF::getClass('entry-empty-excerpt') . '>' . JTCF::__('entry_missing_excerpt_and_content', $post->post_title) . '</p>';
+                        }
+                    } else {
+                        return $post->post_excerpt;
+                    }
+                } elseif(is_single()) {
+                    if(!empty($post->post_content)) {
+                        $html = '<div' . JTCF::getClass('entry-content') . JTCF::getMicrodata('article', 'property', 'articleContent') . '>' . $html . '</div>';
+                    } else {
+                        $html = '<p' . JTCF::getClass('entry-empty-content') . '>' . JTCF::__('entry_missing_excerpt_and_content', $post->post_title) . '</p>';
+                    }
+                }
+                return $html;
+            }
+        ),
+        // Format the post data and add microdata
+        'format_the_date' => array(
+            'the_date',
+            function($date) {
+                return '<time datetime="' . get_the_date('c') . '" title="' . $date . ' at ' . get_the_time() .'">'. $date . '</time>';
+            }
+        ),
+        // Format the post author and add microdata
+        'format_the_post_author' => array(
+            'the_author',
+            function($author) {
+                return JTCF::getOpenSection('author') . '<a href="' . get_author_posts_url( get_the_author_meta( 'ID' ) ) . '" rel="author" title="' . JTCF::__('author_link_title', $author) . '"' . JTCF::getMicrodata('author', 'property', 'url') . '><span' . JTCF::getMicrodata('author', 'property', 'name') . '>'. $author .'</span></a>' . JTCF::getCloseSection('author');
+            }
+        ),
+        // Add links to all thumbnails and add microdata
+        'format_the_post_thumbnail' => array(
+            'post_thumbnail_html',
+            function($html, $postId) {
+                // Only add microdata if in loop
+                if(in_the_loop()) {
+                    $html = str_replace('/>', JTCF::getMicrodata('article', 'itemprop', 'featuredImage') . ' />', $html);
+                }
+                if(has_post_thumbnail() && !is_single()) {
+                    $html = '<a href="' . get_permalink($postId) . '">' . $html . '</a>';
+                }
+                // Wrap image if not in clean mode
+                if(has_post_thumbnail() && JTCF::getClass('entry-featured-image-wrap')) {
+                    $html = str_replace('class="', 'class="' . JTCF::getClass('entry-featured-image', false) . ' ', $html);
+                    $html = '<div' . JTCF::getClass('entry-featured-image-wrap') . '>'. $html . '</div>';
+                }
+                return $html;
+            }, 10, 2
+        ),
+        // Add microdata to category links
+        'format_the_category' => array(
+            'the_category',
+            function($html) {
+                $html = JTCF::__('posted_in') . ' ' . str_replace(">", JTCF::getMicrodata('article', 'property', 'articleSection') . ">", $html);
+                return $html;
+            }
+        ),
+        'format_comment_reply_link' => array(
+            'comment_reply_link',
+            function($link) {
+                $link = str_replace(">", JTCF::getMicrodata('comments', 'property', 'replyToUrl') . ">", $link);
+                return $link;
+            }
+        ),
+        'format_custom_locations' => array(
+            'JTCF_sectionLocation',
+            function($location) {
+                switch($location) {
+                    case 'author':
+                        return 'span';
+                    break;
+                    case 'comments':
+                        return 'section';
+                    break;
+                }
+                return $location;
+            }
+        ),
+        'exhaust_banner_role' => array(
+            'JTCF_outputAttributes',
+            function($atts) {
+                if(isset($atts['role']) && $atts['role'] == 'banner') {
+                    JTCF::$_hasBanner = true;
+                }
+                return $atts;
+            }
+        ),
+        'body_attributes' => array(
+            'JTCF_outputAttributesBody',
+            function($atts) {
+                $atts['class'] = implode(' ', get_body_class(isset($atts['class']) ? $atts['class'] : ''));
+                return $atts;
+            }
+        ),
+        'header_attributes' => array(
+            'JTCF_outputAttributesHeader',
+            function($atts) {
+                // Add banner role, if no role is defined and banner role has not been used
+                if(!isset($atts['role']) && !JTCF::$_hasBanner) {
+                    $atts['role'] = "banner";
+                    JTCF::$_hasBanner = true;
+                }
+                return $atts;
+            }
+        ),
+        'nav_attributes' => array(
+            'JTCF_outputAttributesNav',
+            function($atts) {
+                if(!isset($atts['role'])) $atts['role'] = 'navigation';
+                return $atts;
+            }
+        ),
+        'main_attributes' => array(
+            'JTCF_outputAttributesMain',
+            function($atts) {
+                // Add main role, if no role is defined and main role has not been used
+                if(!isset($atts['role']) && !JTCF::$_hasMain) {
+                    $atts['role'] = "main";
+                    JTCF::$_hasMain = true;
+                }
+                return $atts;
+            }
+        ),
+        'article_attributes' => array(
+            'JTCF_outputAttributesArticle',
+            function($atts) {
+                // Apply role
+                if(!isset($atts['role'])) $atts['role'] = 'article';
+                $atts['class'] = implode(' ', get_post_class(isset($atts['class']) ? $atts['class'] : ''));
+                return $atts;
+            }
+        ),
+        'aside_attributes' => array(
+            'JTCF_outputAttributesAside',
+            function($atts) {
+                // Apply role
+                if(!isset($atts['role'])) $atts['role'] = 'complementary';
+                return $atts;
+            }
+        ),
+        'footer_attributes' => array(
+            'JTCF_outputAttributesFooter',
+            function($atts) {
+                // Apply role
+                if(!isset($atts['role'])) $atts['role'] = 'contentinfo';
+                return $atts;
+            }
+        ),
+        'add_custom_social_options' => array(
+            'JTCF_runConfiguration',
+            function($configs, $type) {
+                switch($type) {
+                    case 'options':
+                    if(of_get_option('social-additional-networks', false)) {
+                        $networks = explode(',', of_get_option('social-additional-networks'));
+                        foreach($networks as $network) {
+                            $network = trim($network);
+                            $configs['Social'][strtolower($network)] = 'text';
+                        }
+                    }
+                    break;
+                }
+                return $configs;
+            }, 10, 2
+        ),
+        'enable_shortcodes_in_widgets' => array(
+            'widget_text', 
+            'do_shortcode'
+        )
+    ),
+    'menus' => array(
+        'header'   => __( 'Top primary menu', 'justintheclouds' ),
+        'footer' => __( 'Footer menu if different from primary', 'justintheclouds' ),
+    ),
+    // Manageble on intialization, or through the JTCF_runConfiguration filter,
+    // or through the use of the JTCF_outputMicrodata filter
     'microdata' => array(
-        'bodyScope' => "http://schema.org/WebPage",
-        'headerScope' => array('JTCF', '_getMicrodataHeaderScope'),
+        
+        'body' => array(
+            'itemtype' => 'http://schema.org/WebPage',
+            'properties' => array(
+                'primaryImageOfPage' => function() {
+                    // Homepage displays logo if have one, fallback to first featured image
+                    if(is_home()) {
+                        if(of_get_option('design-logo')) {
+                            return of_get_option('design-logo');
+                        } else {
+                            global $post;
+                            var_dump($post);
+                        }
+                    }
+                },
+                'about' => function() {
+                    return get_bloginfo('description');
+                },
+                'author' => function() {
+                    return of_get_option('microdata-main-author-of-webpage');
+                }
+            )
+        ),
+        'header' => array(
+            'itemtype' => function() {
+                // This should not apply to article headers
+                if(strpos(JTCF::$currentLocation, '/article') === false) {
+                    return 'http://schema.org/' . of_get_option('microdata-header-scope-type', 'Organization');
+                }
+            },
+            'properties' => array(
+                
+            )
+        ),
+        'main' => array(
+            'itemtype' => function() {
+                if(is_home() || is_archive() || is_single()) {
+                    return 'http://schema.org/Blog';
+                }
+                if(is_page()) {
+                    return 'http://schema.org/CreativeWork';
+                }
+            },
+            'itemprop' => 'mainContentOfPage',
+            'properties' => array(
+                
+            )
+        ),
+        'article' => array(
+            'itemprop' => 'blogPost',
+            'itemtype' => 'http://schema.org/BlogPosting',
+            'properties' => array(
+                'articleContent',
+                'articleSection'
+            )
+        ),
+        'author' => array(
+            'itemtype' => 'http://schema.org/Person',
+            'itemprop' => 'author',
+            'properties' => array(
+                'name',
+                'url'
+            )
+        ),
+        'comments' => array(
+            'itemtype' => 'http://schema.org/UserComments',
+            'itemprop' => 'comment',
+            'properties' => array(
+                'replyToUrl'
+            )
+        ),
+        'comment' => array(
+            'itemtype' => 'http://schema.org/UserComments',
+            'itemprop' => 'comment',
+            'properties' => array(
+                'replyToUrl'
+            )
+        )
+        /*
         'headerItempropName' => "name",
         'headerItempropUrl' => "url",
         'headerItempropImage' => "image",
         'headerItempropTagline' => "description",
-        'headerMeta' => array('JTCF', '_getMicrodataHeaderMeta'),
-        'mainScope' => array('JTCF', '_getMicrodataMainScope'),
+        'headerMeta' => array('about'),
+        'navScope' => 'http://schema.org/SiteNavigationElement',
+
         'mainItemprop' => 'mainContentOfPage',
         'mainItempropAbout' => "",
-        'articleScope' => array('JTCF', '_getMicrodataArticleScope'),
+        'articleScope' => function() {
+            if(is_home() || is_archive() || is_single()) {
+                return 'http://schema.org/BlogPosting';
+            }
+            if(is_page()) {
+                return 'http://schema.org/CreativeWork';
+            }
+        },
+        'articleItempropFeaturedImage' => 'image',
         'asideScope' => "http://schema.org/WPSidebar",
-        'footerScope' => "http://schema.org/WPFooter"
+        'footerScope' => "http://schema.org/WPFooter",
+        // Adding custom microdata for the custom 'theTitle' section
+        // Add the scope for the section
+        'theTitleScope' => "http://schema.org/WPFooter",
+        // Add if the section should have an itemprop applied
+        'theTitleItemprop' => 'postTitle'
+        */
+    ),
+    // Required plugins
+    'plugins' => array('enableArchivePageMenu'),
+    // Options using options framework
+    // TODO make sure new ids match all of_get_option calls
+    'options' => array(
+        // The first dimension is the tab headings
+        // This is so we can easily add options to specific tabs
+        'Design' => array(
+            // This is associative to allow manipulation upon initialization
+            'logo' => 'upload'
+        ),
+        'Contact' => array(
+            'address' => array(
+                'desc' => __("123 Superman St. #123", 'justintheclouds')
+            ),
+            'city' => array(
+                'desc' => __("Austin", 'justintheclouds')
+            ),
+            'state' => array(
+                'desc' => __("TX", 'justintheclouds')
+            ),
+            'zip' => array(
+                'desc' => __("78753", 'justintheclouds')
+            ),
+            'phone' => array(
+                'desc' => __("(123)123-1234", 'justintheclouds')
+            ),
+            'fax' => array(
+                'desc' => __("(123)123-1234", 'justintheclouds')
+            ),
+            'hours' => array(
+                'desc' => __("Monday to Saturday, 10AM to 7PM and Sundays, 12PM to 5PM", 'justintheclouds')
+            ),
+        ),
+        'Social' => array(
+            'additional_networks' => array(
+                'desc' => __('A comma separated list of additional networks you\'d like available. For ex. youtube, flickr, linkedin', 'justintheclouds')
+            ),
+            'facebook' => array(
+                'desc' => __("http://www.facebook.com/username", 'justintheclouds')
+            ),
+            'twitter' => array(
+                'desc' => __("http://www.twitter.com/username", 'justintheclouds')
+            ),
+            'google' => array(
+                'desc' => __("https://plus.google.com/u/0/YOUR_ID", 'justintheclouds')
+            ),
+            'instagram' => array(
+                'desc' => __("http://www.instagram.com/username", 'justintheclouds')
+            ),
+            'pinterest' => array(
+                'desc' => __("http://www.pinterest.com/username", 'justintheclouds')
+            )
+        ),
+        'Header Meta' => array(
+            // TODO test this
+            'google_webmasters' => array(
+                'desc' => __("Speaking of Google, don't forget to set your site up: <a href='http://google.com/webmasters' target='_blank'>http://google.com/webmasters</a>", 'justintheclouds')
+            ),
+            'author_name' => array(
+                'desc' => __('Populates meta author tag. (If your google+ account is added on the Social tab, the google+ account link will be used instead since it play a large role on how how search results are displayed.', 'justintheclouds')
+            ),
+            'mobile_viewport' => array(
+                'desc' => __('Uncomment to use; use thoughtfully!', 'justintheclouds'),
+                'std' => 'width=device-width, initial-scale=1.0'
+            ),
+            'favicon' => 'upload',
+            'apple_touch_icon' => 'upload',
+            'windows_8' => array(
+                'name' => __('App: Windows 8', 'justintheclouds'),
+                'desc' => __('Application Name', 'justintheclouds')
+            ),
+            'windows_8_tile' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('Tile Color', 'justintheclouds'),
+                'type' => 'color'
+            ),
+            'windows_8_image' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('Tile Image', 'justintheclouds'),
+                'type' => 'upload'
+            ),
+            'twitter_card' => array(
+                'name' => __('App: Twitter Card', 'justintheclouds'),
+                'desc' => __('twitter:card (summary, photo, gallery, product, app, player)', 'justintheclouds')
+            ),
+            'twitter_card_site' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('twitter:site (@username of website)', 'justintheclouds')
+            ),
+            'twitter_card_title' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __("twitter:title (the user's Twitter ID)", 'justintheclouds')
+            ),
+            'twitter_card_description' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('twitter:description (maximum 200 characters)', 'justintheclouds'),
+                'type' => 'textarea'
+            ),
+            'twitter_card_url' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('twitter:url (url for the content)', 'justintheclouds')
+            ),
+            'facebook_app' => array(
+                'name' => __('App: Facebook', 'justintheclouds'),
+                'desc' => __('og:title', 'justintheclouds')
+            ),
+            'facebook_app_description' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('og:description', 'justintheclouds'),
+                'type' => 'textarea'
+            ),
+            'facebook_app_url' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('og:url', 'justintheclouds')
+            ),
+            'facebook_app_image' => array(
+                'name' => __('', 'justintheclouds'),
+                'desc' => __('og:image', 'justintheclouds'),
+                'type' => 'upload'
+            )
+        ),
+        'API Settings' => array(
+            'google_analytics_id' => array(
+                'desc' => __('UA-XXXXXXX-XX', 'justintheclouds')
+            ),
+            'google_analytics_domain' => array(
+                'desc' => __('domain.com', 'justintheclouds')
+            )
+        ),
+        'Microdata' => array(
+            'header_scope_type' => array(
+                'options' => array('Person' => 'Person', 'Organization' => 'Organization'),
+                'desc' => 'Is this website for company(organization) or for personal(person) use?',
+                'type' => 'select'
+            ),
+            'main_author_of_webpage' => function() {
+                $options = array();
+                $users = get_users();
+                foreach($users as $user) {
+                    $options[$user->display_name] = $user->display_name;
+                }
+                return array(
+                    'type' => 'select',
+                    'options' => $options,
+                    'std' => $users[0]->display_name
+                );
+            },
+            'disable' => array(
+                'type' => 'checkbox',
+                'desc' => '(Not recommended) this will remove all microdata from your website which is intended to help with search engine rankings'
+            )
+        )
     )
 );
+
 
 if(!class_exists('JTCF')) {
     
@@ -77,6 +854,7 @@ if(!class_exists('JTCF')) {
      * @TODO Document all actions/filters
      * @Future Integrate MrMetaBox
      * @Future Integrate Custom Post Types
+     * @Future Clean/Markup mode, Clean adds no ids or classes but default body/post classes, markup will add classes/ids
      */
     class JTCF {
 
@@ -101,6 +879,15 @@ if(!class_exists('JTCF')) {
         private static $_configs = array();
         
         /**
+         * Debug logs
+         * 
+         * Store all debug logs for output
+         * 
+         * @since 1.0.0
+         */
+        private static $_debugs = array();
+        
+        /**
          * Holds the theme details so we don't have to keep calling wp_get_theme
          */
         public static $theme;
@@ -110,14 +897,16 @@ if(!class_exists('JTCF')) {
          * 
          * This should only occur on the homepage used for the site name.
          */
-        private static $_hasH1 = false;
+        public static $_hasH1 = false;
+        
+        public static $currentLocation = '';
         
         /**
          * If the theme has a h2 for the tagline
          * 
          * This should only occur on the homepage used for the site name.
          */
-        private static $_hasH2 = false;
+        public static $_hasH2 = false;
         
         /**
          * If the theme has a banner role
@@ -126,7 +915,16 @@ if(!class_exists('JTCF')) {
          * 
          * @since 1.0.0
          */
-        private static $_hasBanner = false;
+        public static $_hasBanner = false;
+        
+        /**
+         * If the theme has a main role
+         * 
+         * This should occur once
+         * 
+         * @since 1.0.0
+         */
+        public static $_hasMain = false;
         
         /**
          * Defined microdata scope locations
@@ -136,8 +934,7 @@ if(!class_exists('JTCF')) {
          * 
          * @since 1.0.0
          */
-        private static $_scopes = array();
-        
+        private static $_scopes = array();     
 
         /**
          * Framework developer contact email
@@ -171,37 +968,125 @@ if(!class_exists('JTCF')) {
             return self::$_instance;
         }
 
+        // TODO document me once finished/, try to remove uneeded code from here
         public function __construct($configs) {
-
-            // Grab the details
+          
+            // Grab the theme
             self::$theme = wp_get_theme();
             
             // Merge configs with default configs
             global $JTCFDefaults;
             self::$_configs = self::arrayMergeRecursiveDistinct($JTCFDefaults, $configs);
             
-            // Setup and run initialization configuration
-            self::_runConfiguration(self::$_configs);
-
-            // TODO Setup update checker here
-
-            // Define all hooks
-            add_action('wp_enqueue_scripts', array('JTCF', 'hookWPEnqueueScripts'));
-            
-            // Define all filters
-            
-            // FIXME Do we need these?
-            add_action('wp_footer', array('JTCF', 'footer'));
-        }
-        
-        // TODO document me
-        private static function _runOptionsSetup() {
+            // Log configs
+            self::_debug(array(
+                'Defaults' => $JTCFDefaults,
+                'Child Configs' => $configs,
+                'Initialized With' => self::$_configs
+            ), 'Initialization configs', 'debugs');
             
             // Setup options framework
             // Options Framework (https://github.com/devinsays/options-framework-plugin)
             define('OPTIONS_FRAMEWORK_DIRECTORY', get_template_directory_uri() . '/includes/options-framework/');
             require_once get_template_directory() . '/includes/options-framework/options-framework.php';
-                        
+            
+            add_shortcode('jtcf_social_icons', array('JTCF', 'socialIcons'));
+            
+            // Intialize framework on after_theme_stup hook
+            //add_action('after_setup_theme', array('JTCF', '_runConfiguration'));
+            self::_runConfiguration();
+            //add_action('after_setup_theme', array('JTCF', 'hookAfterThemeSetup'));
+            
+            // Core framework non overwritable hooks
+            if ( is_super_admin() && is_admin_bar_showing() ) {
+                add_action('admin_bar_menu', array('JTCF', 'hookAdminBarMenu'), 201);
+            } else {
+                add_action('shutdown', array('JTCF', 'hookAdminBarMenu'), 201);
+            }
+                
+            // Initialize the update checker.
+            // TODO update public link to correct repo
+            require_once dirname( __FILE__ ) . '/includes/theme-updates/theme-update-checker.php';
+            $update_checker = new ThemeUpdateChecker(
+                'JustinTheCloudsFramework',
+                'https://raw.githubusercontent.com/JustinTheClouds/Wordpress-Starter-Theme/master/version-info.json'
+            );
+            
+        }
+        
+        
+        public static function get($name) {
+            if(isset(self::$_configs[$name])) return self::$_configs[$name];
+        }
+        
+        /**
+         * Begin theme configuration
+         * 
+         * This loops through each passed in configuration option and runs
+         * its cooresponsing configuration method.
+         * 
+         * @param $configs array The merged configs, including the default
+         * configs and child theme initiation configs.
+         * @since 1.0.0
+         */
+        public static function _runConfiguration() {
+            // Loop through each config and process it
+            foreach(self::$_configs as $key => &$value) {
+                // Applies a filter to the configs AFTER child theme
+                // initalization. This allows plugin to tie into the themes configs
+                $value = apply_filters('JTCF_runConfiguration', $value, $key);
+                // Get method name
+                $method = '_run' . ucfirst($key) . 'Setup';
+                if(method_exists('JTCF', $method)) {
+                    call_user_func(array('JTCF', $method));
+                }
+            }
+        }
+        
+        /**
+         * Sets up the options framework
+         * 
+         * This allows shorthand configuration of options.
+         * Options can still be added using an options.php file
+         * or by using the of_options filter.
+         * 
+         * @since 1.0.0
+         * 
+         * The shorthand example are to be defined upon intialization in the
+         * options setting.
+         * 
+         * The first dimension of the options array is the options tabs
+         * options => array(
+         *     'General' => array(
+         *         // options for the general tab
+         *     )
+         * )
+         * 
+         * Shorthand examples
+         * options => array(
+         *     // The general tab, all option define in here will be on this tab
+         *     'General' => array(
+         *         // This will create a checkbox with the name Enable microdata
+         *         'enable_microdata' => 'checkbox',
+         *         // Or you can pass an array with other option settings
+         *         // This will automatically default the name to Select your favorite color
+         *         // but allow you to overwrite the other default settings
+         *         'select_your_favorite_color' => array(
+         *             'desc' => 'Select your preferred favorite color',
+         *             'options' => array('Red', 'Blue', 'Green')
+         *         ),
+         *         // And of course you can define the option with all settings as normal
+         *         'google_analytics_id' => array(
+         *             'name' => __('Google Analytics ID', 'justintheclouds'),
+         *             'desc' => __('UA-XXXXXXX-XX', 'justintheclouds'),
+         *             'id' => 'apis_ga_id',
+         *             'std' => '',
+         *             'type' => 'text'
+         *         )
+         *     )
+         * )
+         */
+        private static function _runOptionsSetup() {
             add_filter( 'of_options', function( $options ) {
                 $options = $options ? $options : array();
                 
@@ -213,13 +1098,17 @@ if(!class_exists('JTCF')) {
                         'type' => 'heading'
                     );
                     foreach($tabOptions as $name => $option) {
+                        // If callable, execute function and set as option
+                        if(is_callable($option)) {
+                            $option = (array)call_user_func($option);
+                        }
                         // Create defaults
                         $defaults = array(
                             'name' => ucfirst(str_replace('_', ' ', $name)),
-                            'id' => strtolower(JTCF::__($tab)) . '-' . ucfirst(str_replace('_', '-', $name))
+                            'id' => strtolower(JTCF::__($tab)) . '-' . ucfirst(str_replace('_', '-', $name)),
+                            'type' => isset($option['type']) ? $option['type'] : 'text'
                         );
                         if(is_array($option)) {
-                            $defaults['type'] = $option['type'];
                             $option = array_merge($defaults, $option);
                         } else {
                             $defaults['type'] = $option;
@@ -233,72 +1122,128 @@ if(!class_exists('JTCF')) {
             });
 
         }
-
-        /**
-         * Begin theme configuration
-         * 
-         * This loops through each passed in configuration option and runs
-         * its cooresponsing configuration method.
-         * 
-         * @param $configs array The merged configs, including the default
-         * configs and child theme initiation configs.
-         * @since 1.0.0
-         */
-        private static function _runConfiguration($configs) {
-            // Loop through each config and process it
-            foreach($configs as $key => $value) {
-                // Skip folder option, no configuration for it
-                if($key == 'folders') continue;
-                // Get method name
-                $method = '_run' . ucfirst($key) . 'Setup';
-                if(method_exists('JTCF', $method)) {
-                    call_user_func(array('JTCF', $method));
-                } else {
-                    // The option does not exist, warn user
-                    trigger_error ( __("The option '$key' is not a valid param to initialize JTCF with"), E_USER_NOTICE );
-                }
-            }
-        }
         
-        // TODO document me
+        /**
+         * Add Hooks
+         * 
+         * Hooks must be defined as arrays. The first key being the
+         * action name, and the second being the function to call
+         * for the action. For the action 'init'
+         * 
+         * @example
+         * 'hooks' => array(
+         *     array(
+         *         'init',
+         *         // This can be either a callable funtion or a closure function
+         *         function() {
+         *             // Run some code on init here
+         *         }
+         *     )
+         * )
+         * 
+         * The priority and accepted_args parameters wll default to 10 and 1 respectively.
+         * If you need to specify either the priority or accepted_args params. You can do as
+         * follows
+         * 
+         * @example
+         * 'hooks => array(
+         *     // Key names are not required but can be helpful to allow plugins the
+         *     // capability to remove/alter closure functions before hook setup.
+         *     'some_key_name_can_be_anything' => array(
+         *         'init',
+         *         // This can be either a callable funtion or a closure function
+         *         function($title) {
+         *             // Run some code on init here
+         *         },
+         *         20,
+         *         3
+         *     )
+         * )
+         */
         private static function _runHooksSetup() {
             if(count(self::$_configs['hooks'])) {
-                foreach(self::$_configs['hooks'] as $action => $hook) {
-                    echo "adding $action:$hook";
-                    add_action($action, $hook);
+                foreach(self::$_configs['hooks'] as $hook) {
+                    call_user_func_array('add_action', array(
+                        $hook[0],
+                        $hook[1],
+                        isset($hook[2]) ? $hook[2] : 10,
+                        isset($hook[3]) ? $hook[3] : 1
+                    ));
                 }
             }
         }
         
         /**
-         * Store widgets for the widgets_init hook
+         * Add filters
          * 
-         * @since 1.0.0
+         * Filters must be defined as arrays. The first key being the
+         * filter name, and the second being the function to call
+         * for the filter. For the filter 'the_title'
+         * 
+         * @example
+         * 'filters' => array(
+         *     array(
+         *         'the_title',
+         *         // This can be either a callable funtion or a closure function
+         *         function($title) {
+         *             return $title . '!'; // Adds an exclamation to the end of the title.
+         *         }
+         *     )
+         * )
+         * 
+         * The priority and accepted_args parameters wll default to 10 and 1 respectively.
+         * If you need to specify either the priority or accepted_args params. You can do as
+         * follows
+         * 
+         * @example
+         * filters => array(
+         *     // Key names are not required but can be helpful to allow plugins the
+         *     // capability to remove/alter closure functions before filter setup.
+         *     'some_key_name_can_be_anything' => array(
+         *         'the_title',
+         *         // This can be either a callable funtion or a closure function
+         *         function($title) {
+         *             return $title . '!'; // Adds an exclamation to the end of the title.
+         *         },
+         *         20,
+         *         3
+         *     )
+         * )
          */
-        private static function _runWidgetsSetup() {
-            // FIXME Remove this?
-            //self::$_widgets = $widgets;
-            add_action('widgets_init', array('JTCF', 'hookWidgetsInit'));
+        private static function _runFiltersSetup() {
+            if(count(self::$_configs['filters'])) {
+                foreach(self::$_configs['filters'] as $filter) {
+                    call_user_func_array('add_filter', array(
+                        $filter[0],
+                        $filter[1],
+                        isset($filter[2]) ? $filter[2] : 10,
+                        isset($filter[3]) ? $filter[3] : 1
+                    ));
+                }
+            }
         }
         
         /**
-         * Store styles for the wp_enqueue_scripts hook
+         * Creates the menu for use in the admin panel and registers the menu
          * 
          * @since 1.0.0
+         * @Future Verify wp_get_nav_menu doesn't hurt performance
          */
-        private static function _runStylesSetup() {
-            // FIXME Need anything here?
-            //self::$_styles = $styles;
-        }
-        
-        /**
-         * Store scripts for the wp_enqueue_scripts hook
-         * 
-         * @since 1.0.0
-         */
-        private static function _runScriptsSetup() {
-            // FIXME Need anything here?
-            //self::$_scripts = $scripts;
+        private static function _runMenusSetup() {
+            $menus = self::$_configs['menus'];
+            if(count($menus)) {
+                foreach($menus as $slug => $title) {
+                    // If it doesn't exist, let's create it.
+                    if(!wp_get_nav_menu_object($slug)){
+                        $menuId = wp_create_nav_menu($slug);
+                        $locations = get_theme_mod('nav_menu_locations');
+                        $locations[$slug] = $menuId;
+                        set_theme_mod('nav_menu_locations', $locations);
+                    }
+                    // Register menu
+                    register_nav_menu($slug, $title);
+                }
+            }
         }
         
         /**
@@ -326,26 +1271,137 @@ if(!class_exists('JTCF')) {
                 );
             }
         }
+        
+        /**
+         * PUBLIC FACING METHODS
+         * -----------------------------------------------------------
+         */
+        
+        public static function getOpenSection() {
+            ob_start();
+            call_user_func_array(array('JTCF', 'openSection'), func_get_args());
+            return ob_get_clean();
+        }
+        
+        public static function getCloseSection() {
+            ob_start();
+            call_user_func_array(array('JTCF', 'closeSection'), func_get_args());
+            return ob_get_clean();
+        }
+        
+        public static function getSection() {
+            ob_start();
+            call_user_func_array(array('JTCF', 'section'), func_get_args());
+            return ob_get_clean();
+        }
+        
+        // TODO Document me
+        public static function openSection($location, $atts=array(), $options=array()) {
+            
+            // Do actions before opening the tag
+            do_action('JTCF_beforeOpenSection', $location, $atts, $options);
+            do_action('JTCF_beforeOpenSection' . ucfirst($location), $atts, $options);
+            
+            // Add location to current position
+            self::$currentLocation .= "/$location";
+            
+            // Allow child theme to modify location element tag
+            $filteredLocation = apply_filters('JTCF_sectionLocation', $location);
+
+            // Grab tag from sub tag
+            if(strpos($filteredLocation, '/') !== false)
+                $filteredLocation = substr(strrchr($filteredLocation, "/"), 1);
+            
+            // Open tag
+            echo "<$filteredLocation";
+            
+            // Apply attributes filter            
+            $atts = apply_filters('JTCF_outputAttributes', $atts, $location);
+            $atts = apply_filters('JTCF_outputAttributes' . ucfirst($location), $atts, $location);
+
+            // Output each attribute
+            if(is_array($atts)) {
+                foreach($atts as $name => $value) {
+                    if($value !== null) {
+                        echo " $name=\"$value\"";   
+                    }
+                }
+            }
+                        
+            // Output the microdata itemprop if it has one
+            self::_outputMicrodata($location, 'itemprop');
+            
+            // Output the microdata item scope
+            self::_outputMicrodata($location, 'itemtype');
+            
+            // Close opening tag
+            echo ">";
+            
+            // Do actions after opening tag
+            do_action('JTCF_afterOpenSection', $location, $atts, $options);
+            do_action('JTCF_afterOpenSection' . ucfirst($location), $atts, $options);
+        }
+        
+        /**
+         * Closes an open section
+         * 
+         * This is closes an html section. First the filter
+         * JTCF_sectionLocation is applied. This will give theme
+         * developers a chance to alter the elements tag before output.
+         * 
+         * Then two actions are called. JTCF_beforeCloseSection and 
+         * JTCF_beforeCloseSection[Locationname]. The first action is useful
+         * as it allows code to be run for all sections. The second hook is for
+         * specific code to be run only for certain sections.
+         * 
+         * Next any microdata properties that have not been applied yet will be
+         * output into <meta> tags.
+         * 
+         * Two after close actions will then be called.
+         */
+        public static function closeSection($location) {
+            
+            // Allow child theme to modify location/tag, and options
+            $filteredLocation = apply_filters('JTCF_sectionLocation', $location);
+            
+            // Do actions after opening tag
+            do_action('JTCF_beforeCloseSection', $location);
+            do_action('JTCF_beforeCloseSection' . ucfirst($location));
+            
+            // Output meta microdata, this is below above hooks, so they have a chance
+            // to use some of the properties before any unused properties get
+            // added as meta tags.
+            self::_outputMicrodata($location, 'properties');
+            
+            echo "</$filteredLocation>";
+                        
+            // Remove location to current position
+            self::$currentLocation = substr(self::$currentLocation, 0, strrpos(self::$currentLocation, "/$location"));
+            
+            // Do actions after opening tag
+            do_action('JTCF_afterCloseSection', $location);
+            do_action('JTCF_afterCloseSection' . ucfirst($location));
+        }
+        
+        /**
+         * Short hand method for calling openSection and closeSection
+         * 
+         * @since 1.0.0
+         */
+        public static function section($location, $atts=array()) {
+            self::openSection($location, $atts);
+            self::closeSection($location);
+        }
 
         public static function hookAfterThemeSetup() {
-
-            
+                        
             add_theme_support( 'automatic-feed-links' );	
             add_theme_support( 'structured-post-formats', array( 'link', 'video' ) );
             add_theme_support( 'post-formats', array( 'aside', 'audio', 'chat', 'gallery', 'image', 'quote', 'status' ) );
             add_theme_support( 'post-thumbnails' );
-
-            // This theme uses wp_nav_menu() in two locations.
-            register_nav_menus( array(
-                'primary'   => __( 'Top primary menu', 'justintheclouds' ),
-                'footer' => __( 'Footer menu if different from primary', 'justintheclouds' ),
-            ) );
             
-
-            add_editor_style( array( 'css/entry-content-base.css', get_stylesheet_directory_uri() ) );
         }
-
-
+        
         /**
          * Allows archive pages to be added to menus
          */
@@ -354,7 +1410,7 @@ if(!class_exists('JTCF')) {
         }
         
         /**
-         * HOOK METHODS
+         * CORE HOOK METHODS
          */
         
         /**
@@ -372,19 +1428,25 @@ if(!class_exists('JTCF')) {
                 foreach(self::$_configs['styles'] as $key => $style) {
                     // If this is an array, call register_style with passed in values
                     if(is_array($style)) {
+                        // Log debug
+                        self::_debug($style, "Registering '$style[0]' with args", 'debugs');
                         call_user_func_array('wp_register_style', $style);
                         $style = $style[0];
                     } else {
+                        // Log debug
+                        self::_debug(array($style, get_stylesheet_directory_uri() . '/' . self::$_configs['folders']['styles'] . '/' . strtolower($style) . '.css', array(), self::$theme->version), "Registering '$style' with args", 'debugs');
                         wp_register_style($style, get_stylesheet_directory_uri() . '/' . self::$_configs['folders']['styles'] . '/' . strtolower($style) . '.css', array(), self::$theme->version);
                     }
                     // Should we enqueue this style
                     if($settings['enqueue'] !== false) {
                         // If true, enqueue all styles; If it's an array, check if this style is in it
                         if($settings['enqueue'] === true || (is_array($settings['enqueue']) && in_array($style, $settings['enqueue']))) {
+                            // Log debug
+                            self::_debug($style, "Enqueuing '$style' with args", 'debugs');
                             wp_enqueue_style($style);  
                         }
                     }
-                }   
+                } 
             }
             // Register and enqueue all scripts
             if(count(self::$_configs['scripts'])) {
@@ -441,47 +1503,102 @@ if(!class_exists('JTCF')) {
                 }   
             }
         }
+        
+        /**
+         * Output debug logs
+         * 
+         * This will add all debug logs to the admin bar if a
+         * developer is viewing the site. If the adminbar is not present
+         * a debug bar will still be available.
+         * 
+         * @since 1.0.0
+         */
+        public static function hookAdminBarMenu() {
+            
+            // Don't execute on ajax calls
+            if (defined('DOING_AJAX') && DOING_AJAX) return;
+            
+            // If is a developer IP or on localhost
+            if($_SERVER['HTTP_HOST'] == 'localhost' || isset(self::$_configs['developers']) && in_array($_SERVER['REMOTE_ADDR'], self::$_configs['developers'])) {
+            
+                // Output computed configs
+                self::_debug(self::$_configs, 'JTCF Initialized With', 'Configs');
+
+                // If we have an admin bar, add button to open debug logs
+                global $wp_admin_bar;
+                if ( is_super_admin() && is_admin_bar_showing() ) {
+
+                    $wp_admin_bar->add_node( array(
+                        'parent' => null,
+                        'id' => 'JTCF_debug_log_admin_bar',
+                        'title' => self::__('debug_log_admin_bar_title') . (isset(self::$_debugs['logs']) ? '<div class="JTCF_debug_log_panel_tab_count JTCF_debug_log_panel_tab_count_logs" style="line-height: 8px !important;">' . count(self::$_debugs['logs']) . '</div>' : '') . (isset(self::$_debugs['errors']) ? '<div class="JTCF_debug_log_panel_tab_count JTCF_debug_log_panel_tab_count_errors" style="line-height: 8px !important;">' . count(self::$_debugs['errors']) . '</div>' : ''),
+                        'href' => '#',
+                        'meta' => array(
+                            'title' => self::__('debug_log_admin_bar_meta_title'),
+                            'class' => 'JTCF_debug_log_admin_bar',
+                            'onclick' => 'jQuery("#JTCF_debug_log_panel").slideToggle(100); return false;'
+                        )
+                    ) );
+
+                } else {
+
+                    echo '
+                        <style>
+                            #JTCF_debug_log_panel {top: 0 !important; display: block !important; padding: 0 !important;}
+                            .JTCF_debug_log_panel_tab {margin-bottom: 0 !important;}
+                        </style>
+                        ';
+
+                }
+
+                // Add the log panel
+                echo '
+                    <style>
+                        #wp-admin-bar-JTCF_debug_log_admin_bar a {background: rgb(175, 165, 92); color: black !important; transition: all .5s ease;}
+                        #wp-admin-bar-JTCF_debug_log_admin_bar a:hover {background: rgb(199, 180, 42) !important;}
+                        #JTCF_debug_log_panel {position: fixed; top: 32px; left: 0; right: 0; background: #333; padding: 15px; color: #CCC; max-height: 400px; overflow-y: scroll; display: none; box-shadow: 0 3px 5px rgba(0,0,0,.4);}
+                        #JTCF_debug_log_panel_tab_close {background: rgb(56, 0, 0);}
+                        .JTCF_debug_log_panel_tab {border-radius: 4px; border: 1px solid #232323; border-bottom: none; padding: 5px 10px; margin: 0 5px 15px 0; display: inline-block; cursor: pointer; transition: all .5s ease;}
+                        .JTCF_debug_log_panel_tab:hover, .JTCF_debug_log_panel_tab.active {background: #444; color: white;}
+                        .JTCF_debug_log_panel_tab_count {color: white !important; display: inline-block !important; padding: 4px 0px !important; margin-left: 7px !important; font-size: 10px !important; background: black !important; height: 8px !important; width: 16px !important; border-radius: 10px !important; line-height: 10px !important; text-align: center !important; -webkit-box-sizing: content-box; -moz-box-sizing: content-box; box-sizing: content-box;}
+                        .JTCF_debug_log_panel_log {padding: 5px 10px;}
+                        .JTCF_debug_log_panel_tab_count_logs {background: rgb(117, 105, 11) !important;}
+                        .JTCF_debug_log_panel_tab_count_errors {background: rgb(117, 11, 11) !important;}
+                        .JTCF_debug_log_panel_title {font-weight: bold; color: white; padding-bottom: 3px; margin: 10px 0 0; min-width: 100px;}
+                        .JTCF_debug_log_panel_data {background: #232323; padding: 10px; border-radius: 4px; border: 1px dashed #454545;}
+                    </style>
+                ';
+                echo '<div id="JTCF_debug_log_panel">';
+                    foreach(self::$_debugs as $tab => $logs) {
+                        echo '<div id="JTCF_debug_log_panel_tab_' . $tab . '" class="JTCF_debug_log_panel_tab' . ($tab == 'logs' ? ' active"' : '') . '" onclick="jQuery(\'.JTCF_debug_log_panel_tab\').removeClass(\'active\'); jQuery(this).addClass(\'active\'); jQuery(\'.JTCF_debug_log_panel_log\').hide(); jQuery(\'#JTCF_debug_log_panel_log_' . $tab . '\').show();">' . ucfirst($tab) . '<span class="JTCF_debug_log_panel_tab_count JTCF_debug_log_panel_tab_count_' . $tab . '">' . count($logs) . '</span></div>';
+                    }
+                    echo '<div title="Close log content" id="JTCF_debug_log_panel_tab_close" class="JTCF_debug_log_panel_tab" onclick="jQuery(\'.JTCF_debug_log_panel_tab\').removeClass(\'active\'); jQuery(\'.JTCF_debug_log_panel_log\').hide();">X</div>';
+                    foreach(self::$_debugs as $tab => $logs) {
+                        echo '<div id="JTCF_debug_log_panel_log_' . $tab . '" class="JTCF_debug_log_panel_log"' . ($tab != 'logs' || (!is_super_admin() || !is_admin_bar_showing()) ? ' style="display: none;"' : '') . '>';
+                        foreach($logs as $title => $log) {
+                            echo '<div class="JTCF_debug_log_panel_title">' . $title . '</div>';
+                            if($log === null) {
+                                echo '<pre class="JTCF_debug_log_panel_data">NULL</pre>';
+                            } elseif($log === true) {
+                                echo '<pre class="JTCF_debug_log_panel_data">TRUE</pre>';
+                            } elseif($log === false) {
+                                echo '<pre class="JTCF_debug_log_panel_data">FALSE</pre>';
+                            } else {
+                                echo '<pre class="JTCF_debug_log_panel_data">'; print_r($log); echo '</pre>';
+                            }
+
+                        }
+                        echo '</div>';
+                    }
+                echo '</div>';
+            
+            }
+        }
 
         /**
          * FILTER METHODS
          * -----------------------------------------------------------
          */
-
-        /**
-         * Create a nicely formatted and more specific title element text for output
-         * in head of document, based on current view.
-         *
-         * @since Twenty Fourteen 1.0
-         *
-         * @param string $title Default title text for current view.
-         * @param string $sep Optional separator.
-         * @return string The filtered title.
-         * 
-         * FIXME rename accordingly
-         */
-        public static function twentyfourteen_wp_title( $title, $sep ) {
-            global $paged, $page;
-
-            if ( is_feed() ) {
-                return $title;
-            }
-
-            // Add the site name.
-            $title .= get_bloginfo( 'name', 'display' );
-
-            // Add the site description for the home/front page.
-            $site_description = get_bloginfo( 'description', 'display' );
-            if ( $site_description && ( is_home() || is_front_page() ) ) {
-                $title = "$title $sep $site_description";
-            }
-
-            // Add a page number if necessary.
-            if ( $paged >= 2 || $page >= 2 ) {
-                $title = "$title $sep " . sprintf( __( 'Page %s', 'twentyfourteen' ), max( $paged, $page ) );
-            }
-
-            return $title;
-        }
 
         /**
          * HELPER METHODS
@@ -492,20 +1609,51 @@ if(!class_exists('JTCF')) {
          * Return a language term by name
          * 
          * The framework uses it's own text-domain for languages.
-         * Since using variables in language function is incorrect,
+         * Since using variables in language functions is incorrect,
          * we allow the child theme to overwrite the frameworks default terms.
          * 
-         * This method is just a quickk way of calling the term while
+         * This method is just a quick way of calling the term while
          * reminding us that it's a mofidiable term.
+         * 
+         * @param string $name The name of the language term. This should be defined
+         * under $_configs['language'][$name]. A JTCF debug error will be added for
+         * missing terms.
          * 
          * @since 1.0.0
          */
-        private static function __($name) {
+        public static function __($name) {
             if(!isset(self::$_configs['language'][$name])) {
-                trigger_error("The language term '$name' is not defined", E_USER_NOTICE);
+                JTCF::_debug(self::$_configs['language'], "The language term '$name' is not defined", 'errors');
                 return $name;
             }
-            return self::$_configs['language'][$name];
+            $text = (is_callable(self::$_configs['language'][$name]) ? call_user_func(self::$_configs['language'][$name]) : self::$_configs['language'][$name]);
+            $args = func_get_args();
+            array_shift($args);
+            return vsprintf($text, $args);
+        }
+        
+        public static function _e($name) {
+            echo call_user_func_array(array('JTCF', '__'), func_get_args());
+        }
+        
+        /**
+         * Gets the class for the specified target
+         * 
+         * If clean mode is enabled, no class will be defined
+         * otherwise the class will be grabbed from the configs['classes'][$default] option
+         * or default to the default param.
+         * 
+         * @param string $target The default class if not defined in configs
+         * @param bool $retAttr Whether to wrap the class in the class="" attr
+         * @since 1.0.0
+         */
+        public static function getClass($default, $retAttr=true) {
+            if(self::$_configs['cleanMode']) return;
+            if($retAttr) {
+                return ' class="' . (!isset(self::$_configs['classes'][$default]) ? $default : self::$_configs['classes'][$default]) . '"';
+            } else {
+                return (!isset(self::$_configs['classes'][$default]) ? $default : self::$_configs['classes'][$default]);
+            }
         }
         
         /**
@@ -569,84 +1717,106 @@ if(!class_exists('JTCF')) {
             return $merged;
         }
         
-        // TODO document me and move
-        private static function _outputAttributes($location, $atts) {
-            switch($location) {
-                case 'body':
-                    // Pull class attr out
-                    if(isset($atts['class'])) {
-                        $classes = $atts['class'];
-                        unset($atts['class']);
-                    } else {
-                        $class = '';
-                    }
-                    // Output body classes
-                    echo ' ';
-                    body_class($class);
-                break;
-                case 'header':
-                    // Skip role if role defined
-                    if(isset($atts['role'])) break;
-                    // If this is the first header, set as banner
-                    if(self::$_hasBanner) break;
-                    echo ' role="banner"';
-                    self::$_hasBanner = true;
-                break;
-                case 'main':
-                    echo ' role="main"';
-                break;
-                case 'article':
-                    echo ' role="article"';
-                    // Pull class attr out
-                    if(isset($atts['class'])) {
-                        $classes = $atts['class'];
-                        unset($atts['class']);
-                    } else {
-                        $class = '';
-                    }
-                    // Output body classes
-                    echo ' ';
-                    post_class($class);
-                break;
-                case 'aside':
-                    echo ' role="complementary"';
-                break;
-                case 'footer':
-                    echo ' role="contentinfo"';
-                break;
-            }
-            if(count($atts)) {
-                foreach($atts as $name => $value) {
-                    if($value !== null) {
-                        echo " $name=\"$value\"";   
-                    }
-                }
-            }
-        }
         
-        private static function _getMicrodataHeaderScope() {
-            return 'http://schema.org/' . of_get_option('microdata-header-scope-type', 'Organization');
-        }
+        /**
+         * DISPLAY METHODS
+         * -----------------------------------------------------------
+         */
         
-        private static function _getMicrodataMainScope() {
-            if(is_home() || is_archive() || is_single()) {
-                return 'http://schema.org/Blog';
-            }
-            if(is_page()) {
-                return 'http://schema.org/CreativeWork';
-            }
-        }
-        
-        private static function _getMicrodataArticleScope() {
-            if(is_home() || is_archive() || is_single()) {
-                return 'http://schema.org/BlogPosting';
-            }
-            if(is_page()) {
-                return 'http://schema.org/CreativeWork';
-            }
-        }
-        
+        // TODO document me
+        // TODO meta
         private static function _outputMicrodata($location, $type, $property="") {
+            echo self::getMicrodata($location, $type, $property);
+        }
+        
+        public static function getMicrodata($location, $output, $property="") {
+            
+            $md = &self::$_configs['microdata'];
+            $data = null;
+            
+            // If location !isset, return
+            // TODO make sure no errors without this
+            if(!isset($md[$location])) return;
+            
+            // Grab $output value or call $output function
+            switch($output) {
+                case 'itemtype':
+                case 'itemprop':
+                    if(!isset($md[$location][$output])) break;
+                    // Call closure
+                    if(is_callable($md[$location][$output])) {
+                        $data = call_user_func($md[$location][$output]);
+                    // Set value
+                    } else {
+                        $data = $md[$location][$output];
+                    }
+                break;
+                case 'properties':
+                    // If no properties, return
+                    if(!isset($md[$location]['properties']) || !count($md[$location]['properties'])) break;
+                    $data = '';
+                    // Loop each property
+                    foreach($md[$location]['properties'] as $itemprop => $content) {
+                        $content = JTCF::getMicrodata($location, 'value', $itemprop);
+                        $itemprop = JTCF::getMicrodata($location, 'property', $itemprop);
+                        // Make sure itemprop and content isnt empty
+                        if(empty($itemprop) || empty($content)) continue;
+                        // Add output
+                        $data .= '<meta' . $itemprop . ' content="' . $content . '" />' . "\n";
+                    }
+                    return $data;
+                break;
+                case 'property':
+                    if($location == 'author') JTCF::_debug('test' . $property);
+                    // If property not set, return
+                    if(!isset($md[$location]['properties'][$property]) && array_search($property, $md[$location]['properties']) === false) break;
+                    $data = $property;
+                break;
+                case 'value':
+                    // If propery not set, return
+                    if(!isset($md[$location]['properties'][$property])) break;
+                    // Call closures
+                    if(is_callable($md[$location]['properties'][$property])) {
+                        $data = call_user_func($md[$location]['properties'][$property]);
+                    } else {
+                        $data = $md[$location]['properties'][$property];
+                    }
+                break;
+                default:
+                    return;
+                break;
+            }
+            
+            // Apply filter
+            $data = apply_filters('JTCF_getMicrodata', $data, $location, $output, $property);
+            
+            // Output the data
+            switch($output) {
+                case 'itemtype':
+                    if(!is_string($data)) return;
+                    return ' itemscope="itemscope" itemtype="' . $data . '"';
+                break;
+                case 'itemprop':
+                    if(!is_string($data)) return;
+                    return ' itemprop="' . $data . '"';
+                break;
+                case 'property':
+                    // Output itemprop name
+                    if(!is_string($data)) return;
+                    // Unset the property since it was used
+                    unset($md[$location]['properties'][$property]);
+                    return ' itemprop="' . $data . '"';
+                break;
+                case 'value':
+                    // Output value of property
+                    if(!is_string($data)) return;
+                    return $data;
+                break;
+            }
+        }
+        
+        // remove
+        public static function getMicrodataDEPRECATED($location, $type, $property="") {
             
             // Define method name
             $method = $location . ucfirst($type) . ucfirst($property);
@@ -656,7 +1826,7 @@ if(!class_exists('JTCF')) {
                     
             if(is_callable(self::$_configs['microdata'][$method])) {
                 $data = call_user_func_array(self::$_configs['microdata'][$method], func_get_args());
-            } elseif(is_string(self::$_configs['microdata'][$method])) {
+            } elseif(true || is_string(self::$_configs['microdata'][$method])) {
                 $data = self::$_configs['microdata'][$method];
             } else {
                 return;
@@ -670,369 +1840,57 @@ if(!class_exists('JTCF')) {
                 case 'scope':
                     // Add to defined scopes
                     self::$_scopes[$location] = $data;
-                    echo ' itemscope="itemscope" itemtype="' . $data . '"';
+                    return ' itemscope="itemscope" itemtype="' . $data . '"';
                 break;
                 case 'itemprop':
                     // Make sure this location is defined/being used and output itemprop="property"
                     if(isset(self::$_scopes[$location])) {
-                        echo ' itemprop="' . $data . '"';
+                        return ' itemprop="' . $data . '"';
                     }
+                break;
+                case 'meta':
+                    // Make sure this location is defined/being used and output itemprop="property"
+                    if(isset(self::$_scopes[$location])) {
+                        $metas = "";
+                        foreach($data as $property) {
+                            if(!empty($property) && $value = JTCF::getMicrodata($location, 'value', $property)) {
+                                $metas .= '<meta' . JTCF::getMicrodata($location, 'itemprop', $property) . ' content="' . $value . '" />' . "\n";
+                            }
+                        }
+                        return $metas;
+                    }
+                break;
+                case 'value':
+                    return $data;
                 break;
             }
         
         }
-                
-        // TODO Document me
-        public static function openSection($location, $atts=array()) {
-            
-            // Do action before opening the tag
-            do_action('JTCF_beforeOpenSection', $location, $atts);
-            
-            // Allow child theme to modify location/tag, and attrs
-            list($location, $atts) = apply_filters('JTCF_openSection', $location, $atts);
-            
-            // Open tag
-            echo "<$location";
-            
-            // Output element attributes
-            self::_outputAttributes($location, $atts);
-            
-            // Output the microdata item scope
-            self::_outputMicrodata($location, 'scope');
-            
-            // Output the microdata itemprop if it has one
-            self::_outputMicrodata($location, 'itemprop');
-            
-            // Close opening tag
-            echo ">";
-            
-            // Do action after opening tag
-            do_action('JTCF_afterOpenSection', $location, $atts);
-        }
         
-        // TODO document me
-        public static function closeSection($location) {
+        // TODO convert JTCF plugin
+        // TODO microdata
+        public static function socialIcons() {
             
-            // TODO Output remaning properties that were not defined in markup
+            $networks = of_get_options();
             
-            switch($location) {
-                case 'body':
-                    wp_footer();
-                break;
-            }
-            
-            echo "</$location>";
-        }
-        
-        // REMOVE
-        private static function _outputMicrodataScope($location, $itemprop=null) {
-            // If the scope is defined, then apply it
-            if(self::_hasMicrodata($location)) {
-                $scope = self::$_configs['microdata'][$location]['scope'];
-                // If the user define a function to determine this scope
-                if(is_callable($scope, false, $callName)) {
-                    // Call user defined scope function for this location
-                    echo ' itemscope="itemscope" itemtype="' . call_user_func($scope) . '"';
-                } else {
-                    // Output scope since it's not a callable function
-                    echo ' itemscope="itemscope" itemtype="' . $scope . '"';
+            $networks = array_filter($networks, function($var) use(&$networks) {
+                $r = false;
+                if(strpos(key($networks), 'social-') !== false) {
+                    if(key($networks) != 'social-additional-networks' && !empty($var)) $r = true;
                 }
-            }
+                next($networks);
+                return $r;
+            });
+
+            if(!count($networks)) return;
+
+            $output = '<div' . JTCF::getClass('social-icons') . '>';
+            foreach($networks as $network => $url) {
+                $output .= '<a href="' . $url . '"' . JTCF::getClass(str_replace('social-', 'social-icons-', $network)) . ' target="_blank"><span' . JTCF::getClass(str_replace('social-', 'social-icons-', $network) . '-icon') . '></span></a>';
+            } 
+            $output .= '</div>';
             
-            // TODO or
-            // uses _microdataItemProp to outputs itemprop="someprop" itemscope itemtype="http://schema.org/Blog"
-            // unsets microdata/location/$itemscope (since it's defined it won't be added to a metta tag)
-        }
-        
-        // REMOVE
-        private static function _outputMicrodataItemProp($location) {
-            if(self::_hasMicrodata($location) && isset(self::$_configs['microdata'][$location]['itemprop'])) {
-                echo ' itemprop="' . self::$_configs['microdata'][$location]['itemprop'] . '"';
-                unset(self::$_configs['microdata'][$location]['properties'][self::$_configs['microdata'][$location]['itemprop']]);
-            }
-            // outputs itemprop="$itemprop"
-            // only if microdata/location/itemprop isset
-        }
-        
-        // REMOVE
-        private static function _outputMicrodataMainScope() {
-            if(is_home() || is_archive() || is_single()) {
-                return "http://schema.org/Blog";
-            }
-            if(is_page()) {
-                return "http://schema.org/CreativeWork";
-            }
-        }
-        
-        // TODO document and move
-        // REMOVE ?
-        private static function _hasMicrodata($location) {
-            return isset(self::$_configs['microdata'][$location]) && isset(self::$_configs['microdata'][$location]['scope']) && !empty(self::$_configs['microdata'][$location]['scope']);
-        }
-        
-        // TODO document and move
-        // REMOVE ?
-        private static function _getMicrodata($location) {
-            return self::$_configs['microdata'][$location]['properties'];
-        }
-        
-        // Todo document me
-        private static function _outputMicrodataMeta($location) {
-            // outputs remaining unused itemprops for this location into meta tags
-            if(self::_hasMicrodata($location)) {
-                foreach(self::_getMicrodata($location) as $name => $data) {
-                    if(is_callable($data)) {
-                        $data = call_user_func($data);
-                    }
-                    if(is_string($data) && !empty($data)) {
-                        echo '<meta itemprop="' . $name . '" content="' . $data . '" />';
-                    }
-                }
-            }
-        }
-        
-        /**
-         * Microdata meta data for the page body
-         * 
-         * @since 1.0.0
-         */
-        public static function microdataBodyMeta() {
-            return;
-            $meta = array(
-                'aboout' 
-            );
-            if(get_bloginfo('description')) $meta['about'] = get_bloginfo('description');
-            return '<meta itemprop="about" content="' . get_the_title() . '" />' .
-                   '<meta itemprop="url" content="' . get_permalink() . '" />' .
-                   '<meta itemprop="articleBody" content="' . get_the_content() . '" />' .
-                   '<meta itemprop="datePublished" content="' . get_the_date('c') . '" />';
-        }
-        
-        public static function microdataArticleMeta() {
-            return;
-            return '<meta itemprop="name" content="' . get_the_title() . '" />' .
-                   '<meta itemprop="url" content="' . get_permalink() . '" />' .
-                   '<meta itemprop="articleBody" content="' . get_the_content() . '" />' .
-                   '<meta itemprop="datePublished" content="' . get_the_date('c') . '" />';
-        }
-
-        /**
-         * DISPLAY METHODS
-         * -----------------------------------------------------------
-         */
-        
-        public static function outputMicrodata($location, $type) {
-            
-            $location = ucfirst(strtolower($location));
-            $type     = ucfirst(strtolower($type));
-            $function = 'microdata' . $location . $type;
-                        
-            if(function_exists($function)) {
-                echo call_user_func($function);
-            } elseif(method_exists('JTCF', $function)) {
-                echo call_user_func(array('JTCF', $function));
-            }
-        }       
-        
-        // TODO document me
-        public static function outputNavigation($configs) {
-            // Open nav tag
-            self::openSection('nav');
-            // Output wordpress nav
-            $defaults = array('container' => false);
-            call_user_func_array('wp_nav_menu', array($configs));
-            // Close nav tag
-            self::openSection('nav');
-        }
-                
-        /**
-         * Output archive pagination links
-         * 
-         * Accepts and addition option in the args. 'return'. If 'return' is
-         * set and is equal to true, the pagination will not be output and
-         * will be returned instead.
-         * 
-         * @param array $args Array of args available for paginate_links()
-         * @since 1.0.0
-         * @return string|void Returns void or the string of paginated links.
-         */
-        public static function outputPagination($args=array()) {
-            global $wp_query;           
-            $args = array_merge(array(
-                'base' => str_replace( 999999999, '%#%', esc_url( get_pagenum_link( 999999999 ) ) ),
-                'format' => '?paged=%#%',
-                'current' => max( 1, get_query_var('paged') ),
-                'total' => $wp_query->max_num_pages
-            ), $args);
-            if(isset($args['return']) && $args['return'] == true) {
-                return paginate_links($args);
-            } else {
-                echo paginate_links($args);
-            }
-        }
-        
-        /**
-         * Displays post navigation
-         * 
-         * For single posts, it will show the next and previous post links.
-         * FIXME The first arg can't work for both functions
-         */
-        public static function outputPostNavigation() {      
-            if(is_single()) {
-                echo '<div class="navigation">';
-                echo '	<div class="next-post" rel="next">'. call_user_func_array('next_post_link', func_get_args()) .'</div>';
-                echo '	<div class="prev-post" rel="prev">'. call_user_func_array('previous_post_link', func_get_args()) .'</div>';
-                echo '</div>';
-            }      
-        }
-        
-        // TODO document me
-        public static function outputSiteTitle() {
-            // Home page should use h1
-            if(is_home() || is_front_page()) {
-                $wrap = "h1";
-                self::$_hasH1 = true;
-            } else {
-                $wrap = "p";
-            }
-            // Output title
-            echo "<$wrap>" . '<a href="' . esc_url( home_url( '/' ) ) . '" title="' . esc_attr( get_bloginfo( 'name', 'display' ) ) . '" rel="home"';
-            
-            // Add itemprop if available
-            self::_outputMicrodata('header', 'itemprop', 'url');
-            
-            echo '><span ' . ( of_get_option('design_logo') ? 'class="screen-reader-text" ' : '');
-            
-            // Add itemprop if available
-            self::_outputMicrodata('header', 'itemprop', 'name');
-            
-            echo '>' . get_bloginfo( 'name' ) . '</span>';
-            
-            if(of_get_option('design_logo')) {
-                echo '<img src="' . of_get_option('design_logo') . '"';
-                
-                // Add itemprop if available
-                self::_outputMicrodata('header', 'itemprop', 'image');
-                
-                echo ' />';
-            }
-            
-            echo '</a>' . "</$wrap>";
-        }
-        
-        public static function outputTagLine() {
-            // If no tagline, output nothing
-            if(empty(get_bloginfo('description'))) {
-                return;
-            }
-            // Homepage tagline should be h2
-            if(is_home() || is_front_page()) {
-                $wrap = "h2";
-                self::$_hasH2 = true;
-            } else {
-                $wrap = "p";
-            }
-            // Output tagline
-            echo '<' . $wrap;
-            
-            // Add itemprop if available
-            self::_outputMicrodata('header', 'itemprop', 'tagline');
-                
-            // Finish tagline
-            echo '>' . get_bloginfo( 'description' ) . "</$wrap>";
-        }
-        
-        // TODO Document me
-        public static function outputTheTitle($heading=null) {
-            
-            // If we are outside of the loop and it's an archive or home/blog page
-            if(!in_the_loop() && (is_home() || is_archive())) {
-                
-                // Hack. Set $post so that the_date() works.
-                global $posts;
-                $post = $posts[0];
-
-                // If the home blog page
-                if (is_home()) {
-
-                // TODO support swapping of theese lang vars
-                // If this is a category archive
-                } elseif (is_category()) {
-                    $title = __('Archive for the', 'justintheclouds') . " &#8216; " . single_cat_title('', false) . " &#8217; " . __('Category', 'justintheclouds');
-
-                // If this is a tag archive
-                } elseif( is_tag() ) {
-                    $title = __('Posts Tagged', 'justintheclouds') . " &#8216; " . single_tag_title('', false) . " &#8217;";
-
-                // If this is a daily archive
-                } elseif (is_day()) {
-                    $title = __('Archive for', 'justintheclouds') . ' ' . get_the_time('F jS, Y');
-
-                // If this is a monthly archive
-                } elseif (is_month()) {
-                    $title = __('Archive for', 'justintheclouds') . ' ' . get_the_time('F, Y');
-
-                // If this is a yearly archive
-                } elseif (is_year()) {
-                   $title = __('Archive for', 'justintheclouds') . ' ' . get_the_time('Y');
-
-                // If this is an author archive
-                } elseif (is_author()) {
-                    $title = __('Author Archive for', 'justintheclouds') . ' ' . get_the_author();
-
-                // If this is a paged archive
-                } elseif (isset($_GET['paged']) && !empty($_GET['paged'])) {
-                    $title = __('Blog Archives', 'justintheclouds');
-                }
-                
-                $heading = $heading ? $heading : (self::$_hasH1 ? (self::$_hasH2 ? 'h3' : 'h2') : 'h1');
-                
-                if($heading == 'h1') self::$_hasH1 = true;
-
-                if(isset($title)) echo "<$heading class=\"archive-title\">$title</$heading>";
-                
-            } elseif(in_the_loop()) {
-            
-                if(is_single()) {
-
-                    if(self::$_hasH1) return;
-                    echo '<h1 class="entry-title">' . get_the_title() . '</h1>';
-                    self::$_hasH1 = true;
-
-                } else {
-
-                    $heading = $heading ? $heading : (self::$_hasH1 ? (self::$_hasH2 ? 'h3' : 'h2') : 'h1');
-                    echo "<$heading>" . '<a href="' . get_the_permalink() . '">' . get_the_title() . '</a>' . "</$heading>";
-
-                }
-                
-            }
-        }
-        
-
-        // FIXME rename this properly and move it?
-        public static function footer() {
-
-            // Google Analytics
-            if($_SERVER['HTTP_HOST'] != 'localhost' && of_get_option('apis_ga_id') && of_get_option('apis_ga_domain')) {
-
-                echo '<!-- Google analytics-->';
-                echo '<script>
-          (function(i,s,o,g,r,a,m){i[\'GoogleAnalyticsObject\']=r;i[r]=i[r]||function(){
-          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-          })(window,document,\'script\',\'//www.google-analytics.com/analytics.js\',\'ga\');
-          ga(\'create\', \'' . of_get_option('apis_ga_id') . '\', \'' . of_get_option('apis_ga_domain') . '\');
-          ga(\'send\', \'pageview\');
-        </script>
-        <!-- Google analytics-->';
-
-            }
-
-            // Load functions.js if it exists
-            if(file_exists(get_template_directory_uri() . '/js/functions.js')) {
-                echo '<script src="' . get_template_directory_uri() . '/js/functions.js"></script>';
-            }
+            return $output;
         }
 
         /**
@@ -1042,19 +1900,14 @@ if(!class_exists('JTCF')) {
          */
         public static function outputHead() {
 
-            echo '<head>';
-
             // Output meta
-            self::outputHeadMeta();
+            self::_outputHeadMeta();
 
             // Output page title
-            self::outputHeadTitle();
+            echo "<title>"; wp_title(); echo "</title>";
 
             // Call default wp_head
             wp_head();
-
-            // Child theme can use wp_head hook to add content below wp_head() content
-            echo '</head>';
 
         }
 
@@ -1063,91 +1916,80 @@ if(!class_exists('JTCF')) {
          * 
          * @since 1.0.0
          */
-        private static function outputHeadMeta() {
-            echo '<meta charset="' . get_bloginfo('charset') . '">';
-            echo '<!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame -->';
-            echo '<!--[if IE ]>';
-            echo '<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">';
-            echo '<![endif]-->';
+        private static function _outputHeadMeta() {
+            
+            $output = array();            
+            $output['charset'] = '<meta charset="' . get_bloginfo('charset') . '" />';
+            
+            // Always force latest IE rendering engine (even in intranet) & Chrome Frame
+            $output['X-UA-Compatible'] = '<!--[if IE ]><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><![endif]-->';
+            
+            $output['title'] = '<meta name="title" content="' . wp_title( '|', false, 'right' ) . '">';
 
-            if (is_search()) {
-                echo '<meta name="robots" content="noindex, nofollow" />';
-            }
-
-            // Page title
-            echo '<!-- Page title -->';
-            echo '<meta name="title" content="' . JTCF::wp_title( '|', false, 'right' ) . '">';
-
-            // Page description
-            echo '<!--Google will often use this as its description of your page/site. Make it good.-->';
-            echo '<meta name="description" content="' . JTCF::get_bloginfo('description') . '" />';
+            $output['description'] = '<meta name="description" content="' . get_bloginfo('description') . '" />';
 
             // Copyright information
-            echo '<meta name="Copyright" content="Copyright &copy; ' . JTCF::get_bloginfo('name') . ' ' . date('Y') . '. All Rights Reserved.">';
+            $output['copyright'] = '<meta name="Copyright" content="Copyright &copy; ' . get_bloginfo('name') . ' ' . date('Y') . '. All Rights Reserved.">';
 
             // Author meta
-            if (true == JTCF::of_get_option('meta_author')) {
-                echo '<meta name="author" content="' . JTCF::of_get_option("meta_author") . '" />';
+            if (of_get_option('meta_author') || of_get_option('social_google')) {
+                $output['author'] = '<meta name="author" content="' . (of_get_option("social_google") ? of_get_option("social_google") : of_get_option("meta_author")) . '" />';
             }
-
+            
+            if (is_search()) {
+                $output['robots'] = '<meta name="robots" content="noindex, nofollow" />';
+            }
+            
             // Google site verifier for google web master tools
-            if (true == JTCF::of_get_option('meta_google')) {
-                echo '<meta name="google-site-verification" content="' . JTCF::of_get_option("meta_google") . '" />';
+            if (true == of_get_option('meta_google')) {
+                $output['google_site_verification'] = '<meta name="google-site-verification" content="' . of_get_option("meta_google") . '" />';
             }
 
             // Viewport
-            if (true == JTCF::of_get_option('meta_viewport')) {
-                echo '<meta name="viewport" content="' . JTCF::of_get_option("meta_viewport") . '" />';
+            if (true == of_get_option('meta_viewport')) {
+                $output['viewport'] = '<meta name="viewport" content="' . of_get_option("meta_viewport") . '" />';
             }
 
             // Favicon
-            if (true == JTCF::of_get_option('head_favicon')) {
-                echo '<meta name=”mobile-web-app-capable” content=”yes”>';
-                echo '<link rel="shortcut icon" sizes=”1024x1024” href="' . JTCF::of_get_option("head_favicon") . '" />';
+            if (true == of_get_option('head_favicon')) {
+                $output['mobile_web_app_capable'] = '<meta name="mobile-web-app-capable" content="yes">';
+                $output['favicon'] = '<link rel="shortcut icon" sizes="1024x1024" href="' . of_get_option("head_favicon") . '" />';
             }
 
             // IOS Webclip
-            if (true == JTCF::of_get_option('head_apple_touch_icon')) {
-                echo '<link rel="apple-touch-icon" href="' . JTCF::of_get_option("head_apple_touch_icon") . '">';
+            if (true == of_get_option('head_apple_touch_icon')) {
+                $output['apple_touch_icon'] = '<link rel="apple-touch-icon" href="' . of_get_option("head_apple_touch_icon") . '">';
             }
 
             // Application-specific meta tags
-            echo '<!-- Application-specific meta tags -->';
             // Windows 8
-            if (true == JTCF::of_get_option('meta_app_win_name')) {
-                echo '<meta name="application-name" content="' . JTCF::of_get_option("meta_app_win_name") . '" /> ';
-                echo '<meta name="msapplication-TileColor" content="' . JTCF::of_get_option("meta_app_win_color") . '" /> ';
-                echo '<meta name="msapplication-TileImage" content="' . JTCF::of_get_option("meta_app_win_image") . '" />';
+            if (true == of_get_option('meta_app_win_name')) {
+                $output['application_name'] = '<meta name="application-name" content="' . of_get_option("meta_app_win_name") . '" /> ';
+                $output['msapplication_tilecolor'] = '<meta name="msapplication-TileColor" content="' . of_get_option("meta_app_win_color") . '" /> ';
+                $output['msapplication_tileimage'] = '<meta name="msapplication-TileImage" content="' . of_get_option("meta_app_win_image") . '" />';
             }
 
             // Twitter
-            if (true == JTCF::of_get_option('meta_app_twt_card')) {
-                echo '<meta name="twitter:card" content="' . JTCF::of_get_option("meta_app_twt_card") . '" />';
-                echo '<meta name="twitter:site" content="' . JTCF::of_get_option("meta_app_twt_site") . '" />';
-                echo '<meta name="twitter:title" content="' . JTCF::of_get_option("meta_app_twt_title") . '">';
-                echo '<meta name="twitter:description" content="' . JTCF::of_get_option("meta_app_twt_description") . '" />';
-                echo '<meta name="twitter:url" content="' . JTCF::of_get_option("meta_app_twt_url") . '" />';
+            if (true == of_get_option('meta_app_twt_card')) {
+                $output['twitter_card'] = '<meta name="twitter:card" content="' . of_get_option("meta_app_twt_card") . '" />';
+                $output['twitter_site'] = '<meta name="twitter:site" content="' . of_get_option("meta_app_twt_site") . '" />';
+                $output['twitter_title'] = '<meta name="twitter:title" content="' . of_get_option("meta_app_twt_title") . '">';
+                $output['twitter_description'] = '<meta name="twitter:description" content="' . of_get_option("meta_app_twt_description") . '" />';
+                $output['twitter_url'] = '<meta name="twitter:url" content="' . of_get_option("meta_app_twt_url") . '" />';
             }
 
             // Facebook
-            if (true == JTCF::of_get_option('meta_app_fb_title')) {
-                echo '<meta property="og:title" content="' . JTCF::of_get_option("meta_app_fb_title") . '" />';
-                echo '<meta property="og:description" content="' . JTCF::of_get_option("meta_app_fb_description") . '" />';
-                echo '<meta property="og:url" content="' . JTCF::of_get_option("meta_app_fb_url") . '" />';
-                echo '<meta property="og:image" content="' . JTCF::of_get_option("meta_app_fb_image") . '" />';
+            if (true == of_get_option('meta_app_fb_title')) {
+                $output['og_title'] = '<meta property="og:title" content="' . of_get_option("meta_app_fb_title") . '" />';
+                $output['og_description'] = '<meta property="og:description" content="' . of_get_option("meta_app_fb_description") . '" />';
+                $output['og_url'] = '<meta property="og:url" content="' . of_get_option("meta_app_fb_url") . '" />';
+                $output['og_image'] = '<meta property="og:image" content="' . of_get_option("meta_app_fb_image") . '" />';
             }
 
             // Pingback URL
-            echo '<link rel="pingback" href="' . JTCF::get_bloginfo('pingback_url') . '" />';
-        }
-
-        /**
-         * Output page title
-         * 
-         * @since 1.0.0
-         */
-        private static function outputHeadTitle() {
-            echo '<title>' . JTCF::wp_title( '|', false, 'right' ) . '</title>';
+            $output['pingback'] = '<link rel="pingback" href="' . get_bloginfo('pingback_url') . '" />';
+            
+            echo implode("\t\r\n", apply_filters('JTCF_outputHeadMeta', $output));
         }
 
         /**
@@ -1155,40 +1997,18 @@ if(!class_exists('JTCF')) {
          * 
          * @since 1.0.0
          */
-        private static function outputDoctype() {
+        public static function outputDoctype() {
             ob_start();
             language_attributes();
             $langAtts = ob_get_clean();
-            echo '<!DOCTYPE html>';
-            echo '<!--[if lt IE 7 ]> <html class="ie ie6 ie-lt10 ie-lt9 ie-lt8 ie-lt7 no-js" ' . $langAtts . '> <![endif]-->';
-            echo '<!--[if IE 7 ]>    <html class="ie ie7 ie-lt10 ie-lt9 ie-lt8 no-js" ' . $langAtts .'> <![endif]-->';
-            echo '<!--[if IE 8 ]>    <html class="ie ie8 ie-lt10 ie-lt9 no-js" ' . $langAtts . '> <![endif]-->';
-            echo '<!--[if IE 9 ]>    <html class="ie ie9 ie-lt10 no-js" ' . $langAtts . '> <![endif]-->';
-            echo '<!--[if gt IE 9]><!--><html class="no-js" ' . $langAtts . '><!--<![endif]-->';
-            echo '<!-- the "no-js" class is for Modernizr. -->';       
-        }
-
-        /**
-         * Magic static caller
-         *
-         * Check whether the method exists on the JTCF class and calls
-         * it if it does exist. Otherwise it will call the method as it's
-         * own function.
-         *
-         * The purpose of this is so we can call all wordpress functions
-         * through the JTCF class even if they are not tied into yet. This will
-         * allow future extendability without having to rework any child themes.
-         *
-         * @since 1.0.0
-         */
-        public static function __callStatic($method, $args) {
-
-            // Check if method exists on JTCF class
-            if(!method_exists('JTCF', $method)) {
-                return call_user_func_array($method, $args);
-            } else {
-                return call_user_func_array(array('JTCF', $method), $args);
-            }
+             
+            $output = '<!DOCTYPE html>';
+            $output .= '<!--[if lt IE 7 ]> <html class="ie ie6 ie-lt10 ie-lt9 ie-lt8 ie-lt7 no-js" ' . $langAtts . '> <![endif]-->';
+            $output .= '<!--[if IE 7 ]>    <html class="ie ie7 ie-lt10 ie-lt9 ie-lt8 no-js" ' . $langAtts .'> <![endif]-->';
+            $output .= '<!--[if IE 8 ]>    <html class="ie ie8 ie-lt10 ie-lt9 no-js" ' . $langAtts . '> <![endif]-->';
+            $output .= '<!--[if IE 9 ]>    <html class="ie ie9 ie-lt10 no-js" ' . $langAtts . '> <![endif]-->';
+            
+            echo apply_filters('JTCF_outputDoctype', $output);
         }
 
         /**
@@ -1214,317 +2034,24 @@ if(!class_exists('JTCF')) {
             wp_mail( $this->_contactEmail, "JustinTheClouds Framework Method Usage Report", file_get_contents(dirname( __FILE__ ) . 'style.css'), $headers, $attachments );
 
         }
+        
+        public static function _debug($data, $title=null, $type='logs') {
+            // If is a developer IP or on localhost
+            if($_SERVER['HTTP_HOST'] == 'localhost' || isset(self::$_configs['developers']) && in_array($_SERVER['REMOTE_ADDR'], self::$_configs['developers'])) {
+                if(!isset(self::$_debugs[$type])) self::$_debugs[$type] = array();
+                if($title) {
+                    self::$_debugs[$type][$title] = $data;
+                } else {
+                    self::$_debugs[$type][] = $data;
+                }
+            }
+        }
     }
 }
 
-// Initialize framework
-global $JTCF;
-$JTCF = JTCF::getInstance(array(
-    // Define folder locations
-    'folders'      => array(
-        'styles'     => 'css',
-        'scripts'    => 'js',
-        'languages'  => 'languages'
-    ),
-    // Auto update child
-    'updater'    => 'link to hosted version info',
-    // Set the text domain of the theme
-    // This defaults to justintheclouds, if using this option
-    // it's important to use it first since the JTCF automatically applies
-    // functions during configuration
-    'textdomain' => 'justintheclouds',
-    // Register styles, only file name is needed or an array of register args
-    // these will be registered and enqueued on wp_enqueue_scripts
-    'styles'     => array(
-        // Enqueue after registering, 'true' is the default
-        // '_enqueue' => true,
-        // Or an array of style name that should be enqueued
-        '_enqueue' => array('stylename2'),
-        array('stylename2', get_stylesheet_directory_uri() . '/somestyles.css', array('stylename1'), '1.2.3', 'all'),
-        'stylename1'
-    ),
-    // Register scripts, only file name is needed or and array of register args
-    // these will be registered an enqueued on wp_enqueue_scripts
-    'scripts'    => array(
-        // Should we enqueue these scripts? Defaults to true; can be array of scripts to enqueue
-        '_enqueue' => true,
-        array('custom', get_stylesheet_directory_uri() . '/js/functions.js', array('jquery'), '1.0.0', true),
-        'jquery'
-    ),
-    // Short hand widget definitiion
-    'widgets'    => array(
-        // Define default settings for all widgets
-        '_defaults' => array(
-            'before_widget' => '<div id="%1$s" class="widget %2$s">',
-            'after_widget'  => '</div>',
-            'before_title'  => '<h5 class="widget-title">',
-            'after_title'   => '</h5>'
-        ),
-        'Sidebar',
-        'Sidebar Bottom' => array(
-            'before_title'  => '<h6 class="widget-title">',
-            'after_title'   => '</h6>'
-        )
-    ),
-    // Long hand hook definitions; works for hooks
-    'filters'    => array(
-        'filtername' => array($filterArgs=array())
-    ),
-    // Required plugins
-    'plugins' => array('enableArchivePageMenu'),
-    // Options using options framework
-    'options' => array(
-        // The first dimension is the tab headings
-        // This is so we can easily add options to specific tabs
-        'Design' => array(
-            // This is associative to allow manipulation upon initialization
-            'logo' => array(
-                'name' => __('Header Logo', 'justintheclouds'),
-                'desc' => __('', 'justintheclouds'),
-                'id' => 'design_logo',
-                'type' => 'upload'
-            )
-        ),
-        'Contact' => array(
-            'address' => array(
-                'name' => __('Address', 'justintheclouds'),
-                'desc' => __("123 Superman St. #123", 'justintheclouds'),
-                'id' => 'contact_address',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'city' => array(
-                'name' => __('City', 'justintheclouds'),
-                'desc' => __("Austin", 'justintheclouds'),
-                'id' => 'contact_city',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'state' => array(
-                'name' => __('State', 'justintheclouds'),
-                'desc' => __("TX", 'justintheclouds'),
-                'id' => 'contact_state',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'zip' => array(
-                'name' => __('Zip', 'justintheclouds'),
-                'desc' => __("78753", 'justintheclouds'),
-                'id' => 'contact_zip',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'phone' => array(
-                'name' => __('Phone', 'justintheclouds'),
-                'desc' => __("(123)123-1234", 'justintheclouds'),
-                'id' => 'contact_phone',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'fax' => array(
-                'name' => __('Fax', 'justintheclouds'),
-                'desc' => __("(123)123-1234", 'justintheclouds'),
-                'id' => 'contact_fax',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'hours' => array(
-                'name' => __('Hours', 'justintheclouds'),
-                'desc' => __("Monday to Saturday, 10AM to 7PM and Sundays, 12PM to 5PM", 'justintheclouds'),
-                'id' => 'contact_hours',
-                'std' => '',
-                'type' => 'text'
-            ),
-        ),
-        'Social' => array(
-            'facebook' => array(
-                'name' => __('Facebook Link', 'justintheclouds'),
-                'desc' => __("http://www.facebook.com/username", 'justintheclouds'),
-                'id' => 'social_facebook',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'twitter' => array(
-                'name' => __('Twitter Link', 'justintheclouds'),
-                'desc' => __("http://www.twitter.com/username", 'justintheclouds'),
-                'id' => 'social_twitter',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'instagram' => array(
-                'name' => __('Instagram Link', 'justintheclouds'),
-                'desc' => __("http://www.instagram.com/username", 'justintheclouds'),
-                'id' => 'social_instagram',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'pinterest' => array(
-                'name' => __('Pinterest Link', 'justintheclouds'),
-                'desc' => __("http://www.pinterest.com/username", 'justintheclouds'),
-                'id' => 'social_pinterest',
-                'std' => '',
-                'type' => 'text'
-            )
-        ),
-        'Header Meta' => array(
-            'google_webmasters' => array(
-                'name' => __('Google Webmasters', 'justintheclouds'),
-                'desc' => __("Speaking of Google, don't forget to set your site up: <a href='http://google.com/webmasters' target='_blank'>http://google.com/webmasters</a>", 'justintheclouds'),
-                'id' => 'meta_google',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'author_name' => array(
-                'name' => __('Author Name', 'justintheclouds'),
-                'desc' => __('Populates meta author tag.', 'justintheclouds'),
-                'id' => 'meta_author',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'mobile_viewport' => array(
-                'name' => __('Mobile Viewport', 'justintheclouds'),
-                'desc' => __('Uncomment to use; use thoughtfully!', 'justintheclouds'),
-                'id' => 'meta_viewport',
-                'std' => 'width=device-width, initial-scale=1.0',
-                'type' => 'text'
-            ),
-            'favicon' => array(
-                'name' => __('Site Favicon', 'justintheclouds'),
-                'desc' => __('', 'justintheclouds'),
-                'id' => 'head_favicon',
-                'type' => 'upload'
-            ),
-            'apple_touch_icon' => array(
-                'name' => __('Apple Touch Icon', 'justintheclouds'),
-                'desc' => __('', 'justintheclouds'),
-                'id' => 'head_apple_touch_icon',
-                'type' => 'upload'
-            ),
-            'windows_8_name' => array(
-                'name' => __('App: Windows 8', 'justintheclouds'),
-                'desc' => __('Application Name', 'justintheclouds'),
-                'id' => 'meta_app_win_name',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'windows_8_tile' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('Tile Color', 'justintheclouds'),
-                'id' => 'meta_app_win_color',
-                'std' => '',
-                'type' => 'color'
-            ),
-            'windows_8_image' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('Tile Image', 'justintheclouds'),
-                'id' => 'meta_app_win_image',
-                'std' => '',
-                'type' => 'upload'
-            ),
-            'twitter_card' => array(
-                'name' => __('App: Twitter Card', 'justintheclouds'),
-                'desc' => __('twitter:card (summary, photo, gallery, product, app, player)', 'justintheclouds'),
-                'id' => 'meta_app_twt_card',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'twitter_card_site' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('twitter:site (@username of website)', 'justintheclouds'),
-                'id' => 'meta_app_twt_site',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'twitter_card_title' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __("twitter:title (the user's Twitter ID)", 'justintheclouds'),
-                'id' => 'meta_app_twt_title',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'twitter_card_description' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('twitter:description (maximum 200 characters)', 'justintheclouds'),
-                'id' => 'meta_app_twt_description',
-                'std' => '',
-                'type' => 'textarea'
-            ),
-            'twitter_card_url' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('twitter:url (url for the content)', 'justintheclouds'),
-                'id' => 'meta_app_twt_url',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'facebook_app' => array(
-                'name' => __('App: Facebook', 'justintheclouds'),
-                'desc' => __('og:title', 'justintheclouds'),
-                'id' => 'meta_app_fb_title',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'facebook_app_description' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('og:description', 'justintheclouds'),
-                'id' => 'meta_app_fb_description',
-                'std' => '',
-                'type' => 'textarea'
-            ),
-            'facebook_app_url' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('og:url', 'justintheclouds'),
-                'id' => 'meta_app_fb_url',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'facebook_app_image' => array(
-                'name' => __('', 'justintheclouds'),
-                'desc' => __('og:image', 'justintheclouds'),
-                'id' => 'meta_app_fb_image',
-                'std' => '',
-                'type' => 'upload'
-            )
-        ),
-        'API Settings' => array(
-            'google_analytics_id' => array(
-                'name' => __('Google Analytics ID', 'justintheclouds'),
-                'desc' => __('UA-XXXXXXX-XX', 'justintheclouds'),
-                'id' => 'apis_ga_id',
-                'std' => '',
-                'type' => 'text'
-            ),
-            'google_analytics_domain' => array(
-                'name' => __('Google Analytics Domain', 'justintheclouds'),
-                'desc' => __('domain.com', 'justintheclouds'),
-                'id' => 'apis_ga_domain',
-                'std' => '',
-                'type' => 'text'
-            )
-        ),
-        'Microdata' => array(
-            'header_scope_type' => array(
-                'options' => array('Person' => 'Person', 'Organization' => 'Organization'),
-                'desc' => 'Is this website for company(organization) or for personal(person) use?',
-                'type' => 'select'
-            ),
-            'disable' => array(
-                'type' => 'checkbox',
-                'desc' => '(Not recommended) this will remove all microdata from your website which is intended to help with search engine rankings'
-            )
-        )
-    )
-));
-
-// REMOVE
-add_filter('JTCF_outputMicrodata', 'tester', 10, 4);
-function tester($data, $location, $type, $property) {
-    switch($location) {
-        case 'body':
-            //$data = 'test';
-        break;
-    }
-    return $data;
-}
+// TODO better Initialize framework
+//global $JTCF;
+//$JTCF = JTCF::getInstance();
 
 
 ?>

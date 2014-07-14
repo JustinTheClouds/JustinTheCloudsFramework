@@ -20,33 +20,38 @@ JTCF::outputHead();
     <?php JTCF::openSection('header'); ?>
         <?php JTCF::outputSiteTitle(); ?>
         <?php JTCF::outputTagLine(); ?>
-        <?php JTCF::outputNavigation(array('menu' => 'primary')); ?>
+        <?php JTCF::openSection('nav'); ?>
+        <?php JTCF::closeSection('nav', array('theme_location' => 'primary')); ?>
     <?php JTCF::closeSection('header'); ?>
 
+    <?php /**
+           * This section utilizes the afterOpenSection hook to add the archive title
+           * if it's an archive page. JTCF::outputTheTitle() could be called manually
+           * right below this openSection() line for the same effect.
+           */ ?> 
     <?php JTCF::openSection('main'); ?>
 
-        <?php 
-        // Output page or article titles accordingly. This works inside/outside the loop
-        // and can be used more than once in a single template, for axample archive pages.
-        ?>
-        <?php JTCF::outputTheTitle(); ?>
-
         <?php if (have_posts()) : ?>
-
-        <?php // Outputs next and previoius post links only on single post types ?>
-        <?php JTCF::outputPostNavigation(); ?>
 
         <?php while (have_posts()) : the_post(); ?>
 
             <?php JTCF::openSection('article', array('id' => "post-" . get_the_ID())); ?>
 
-                <header>
-                    <?php JTCF::outputTheTitle(); ?>
-                </header>
-
-                <div class="entry">
-                    <?php the_content(); ?>
-                </div>
+                <?php /**
+                       * This is a custom section that utilizes hooks/filters
+                       * then calls outputTheTitle helper method
+                       * This could just be JTCF::outputTheTitle() or just the_title()
+                       * Use this as a reference on using custom section types
+                       */ ?>
+                <?php JTCF::openSection('theTitle'); JTCF::closeSection('theTitle'); ?>
+                
+                <?php /**
+                       * This is a custom section that utilizes hooks/filters
+                       * then calls outputTheContent helper method
+                       * This could just be JTCF::outputTheContent() or just the_content()
+                       * Use this as a reference on using custom section types
+                       */ ?>
+                <?php JTCF::openSection('theContent'); JTCF::closeSection('theContent'); ?>
 
                 <footer class="postmetadata">
                     <?php the_tags(__('Tags: ','justintheclouds'), ', ', '<br />'); ?>

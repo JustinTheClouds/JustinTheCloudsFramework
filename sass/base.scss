@@ -1,0 +1,289 @@
+/* Reset styles */
+@import "compass/reset";
+
+/* Fix admin bar hiding hash links */
+.admin-bar [role=heading], .admin-bar .hash-link {
+    border-top: 40px solid transparent;
+    margin-top: -40px !important;
+}
+
+/* Base Element Styles */
+body * {
+    font-size: 16px;
+    line-height: 25px;
+    margin-bottom: 25px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    text-rendering: optimizeLegibility;
+}
+h1, h1 a, h1 a span {
+    font-size: 52px;
+    line-height: 69px;
+    margin: 34px 0;
+}
+h2, h2 a, h2 a span {
+    font-size: 40px;
+    line-height: 54px;
+    margin: 27px 0;
+}
+h3, h3 a, h3 a span {
+    font-size: 34px;
+    line-height: 47px;
+    margin: 23px 0;
+}
+h4, h4 a, h4 a span {
+    font-size: 27px;
+    line-height: 38px;
+    margin: 18px 0;
+}
+h5, h5 a, h5 a span {
+    font-size: 23px;
+    line-height: 33px;
+    margin: 15px 0;
+}
+h6, h6 a, h6 a span {
+    font-size: 18px;
+    line-height: 28px;
+    margin: 12px 0;
+}
+
+a {
+
+}
+
+p {
+    
+}
+
+li {
+    margin-bottom: 12px;
+    margin-left: 20px;
+}
+
+ul {
+    list-style-type: disc;
+
+    li {
+        
+    }
+}
+
+ol {
+    list-style-type: decimal;
+
+    li {
+        margin-left: 24px;
+    }
+}
+
+menu {
+    list-style-type: none;
+    
+    li {
+        padding: 4px 6px;
+        margin: 0;
+        background: rgba(0,0,0,.2);
+        border-bottom: 1px solid rgba(0,0,0,.2);
+        cursor: pointer;
+        -webkit-transition: all .5s ease;
+        -moz-transition: all .5s ease;
+        transition: all .5s ease; 
+        
+        &:hover {
+            background: #FFFFFF;
+        }
+    }
+}
+
+strong, b {
+    font-weight: bold;
+}
+
+em, i, dfn {
+    font-style: italic;
+}
+
+strike, s {
+    text-decoration: line-through;
+}
+
+q {
+    font-style: italic;
+
+    &:before {
+        content: '"';
+        position: relative;
+        top: 3px;
+        padding-right: 2px;
+    }
+    &:after {
+        content: '"';
+        position: relative;
+        top: 3px;
+        padding-left: 2px;
+    }
+    
+    q {
+        font-weight: bold;
+    }
+}
+
+blockquote {
+    border-left: 5px solid;
+    padding: 0 18px;
+    font-family: serif;
+    font-style: italic;
+    
+    &, * {
+        font-size: 23px;
+        line-height: 33px;
+    }
+}
+
+form {
+    
+    fieldset {
+        border: 1px solid gray;
+        padding: 10px 15px;
+        -webkit-border-radius: 8px;
+        border-radius: 8px;
+    }
+    
+    input[type="submit"], input[type="reset"] {
+        padding: 6px;
+    }
+}
+
+table {
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid grey;
+    word-break: break-word;
+    
+    thead {
+        background: rgba(0,0,0,.1);
+        border-bottom: 1px solid grey
+    }
+    
+    tr {
+        border-bottom: 1px solid grey;
+
+        &:last-child {
+            border-bottom: none;
+        }
+        
+        th, td {
+            padding: 2px;
+            border-right: 1px solid grey;
+            
+            &:last-child {
+                border-right: none;
+            }
+        }
+        
+        th {
+            background: rgba(0,0,0,.1);
+            font-weight: bold;
+        }
+    }
+}
+
+abbr {
+    font-weight: bold;
+    font-style: italic;
+    text-decoration: underline;
+    background: rgba(0,0,0,.1);
+    
+    &:after {
+        content: '*';
+        text-decoration: none;
+    }
+}
+
+acronym {
+    font-weight: bold;
+    text-transform: uppercase;
+    
+    &:after {
+        content: '*';
+    }
+}
+
+code {
+    background: rgba(0,0,0,.15);
+    display: inline-block;
+    font-family: monospace;
+    padding: 1px 5px;
+    border-left: 3px solid rgba(0,0,0,.15);
+    border-right: 1px solid rgba(0,0,0,.1);
+    white-space: pre-wrap;
+}
+div, p {
+    
+    & > code {
+        margin-bottom: 0;
+    }
+}
+
+sub {
+    font-size: 12px;
+    position: relative;
+    top: -3px;
+    display: inline-block;
+    padding: 0 3px;
+    margin-bottom: 0;
+}
+sup {
+    font-size: 12px;
+    position: relative;
+    top: 3px;
+    display: inline-block;
+    padding: 0 3px;
+    margin-bottom: 0;
+}
+
+dl {
+    
+    dt {
+        margin-bottom: 5px;
+        font-style: italic;
+    }
+    dd {
+        margin-left: 18px;
+        margin-bottom: 12px;
+    }
+}
+
+small {
+    font-size: 12px;
+    font-weight: normal;
+    text-transform: lowercase;
+}
+
+cite {
+    font-size: 12px;
+    font-weight: bold;
+    font-style: italic;
+    
+    &:before {
+        content: '~ ';
+    }
+}
+
+tt {
+    font-family: monospace;
+}
+kbd, samp {
+    font-family: monospace;
+    background: rgba(0,0,0,.1);
+}
+var {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+hr {
+    border-bottom: 1px solid rgba(0,0,0,.1);
+    border-top: none;
+}
