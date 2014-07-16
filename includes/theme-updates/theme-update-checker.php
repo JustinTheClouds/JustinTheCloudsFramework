@@ -178,9 +178,11 @@ class ThemeUpdateChecker {
 		
 		//Is there an update to insert?
 		if ( !empty($state) && isset($state->update) && !empty($state->update) ){
+            var_dump($state->update->toWpFormat());
+            return $updates;
 			$updates->response[$this->theme] = $state->update->toWpFormat();
 		}
-		
+        
 		return $updates;
 	}
 	

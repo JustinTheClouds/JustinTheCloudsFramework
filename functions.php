@@ -1009,7 +1009,7 @@ if(!class_exists('JTCF')) {
             require_once dirname( __FILE__ ) . '/includes/theme-updates/theme-update-checker.php';
             $update_checker = new ThemeUpdateChecker(
                 'JustinTheCloudsFramework',
-                'https://raw.githubusercontent.com/JustinTheClouds/Wordpress-Starter-Theme/master/version-info.json'
+                'https://raw.githubusercontent.com/JustinTheClouds/JustinTheCloudsFramework/master/version-info.json'
             );
             
         }
