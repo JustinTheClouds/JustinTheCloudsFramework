@@ -169,7 +169,7 @@ class ThemeUpdateChecker {
 	
 	/**
 	 * Insert the latest update (if any) into the update list maintained by WP.
-	 * WIP WIP
+	 * WIP
 	 * @param StdClass $updates Update list.
 	 * @return array Modified update list.
 	 */
