@@ -52,3 +52,7 @@ This is the single filter that will allow you to alter all of the websites micro
 ### 1.0.4
 
 * Added archive-navigation class around pagination links
+
+### 1.0.5
+
+* Added JTCF_wp_list_comments filter

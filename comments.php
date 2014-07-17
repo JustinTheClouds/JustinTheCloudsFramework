@@ -34,13 +34,13 @@ if ( post_password_required() ) {
 
 	<ol<?php echo JTCF::getClass('comment-list'); ?>>
 		<?php
-			wp_list_comments( array(
+			wp_list_comments( apply_filters('JTCF_wp_list_comments', array(
                 'walker'     => new JTCF_Walker_Comment,
 				'style'      => 'ol',
 				'short_ping' => true,
 				'avatar_size'=> 34,
                 'format' => 'html5'
-			) );
+			) ) );
 		?>
 	</ol><!-- .comment-list -->
 
