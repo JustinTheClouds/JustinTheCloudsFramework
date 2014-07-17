@@ -46,3 +46,5 @@ Allows modification of actual HTML tag used as well has the attributes to be app
 #### JTCF_outputMicrodata
 
 This is the single filter that will allow you to alter all of the websites microdata. Three arguments will be passed in with the filtered data. $location, $type, $property. $location is where in the document the microdata is being placed. $type is the type of microdata which can be 'scope', 'meta', or 'itemprop'.
+
+## Changelog
