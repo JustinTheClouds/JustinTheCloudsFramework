@@ -219,7 +219,9 @@ $JTCFDefaults = array(
                     'current' => max( 1, get_query_var('paged') ),
                     'total' => $wp_query->max_num_pages
                 );
+                echo '<div class="' . JTCF::getClass('archive-pagination') . '">';
                 echo paginate_links($args);
+                echo '</div>';
             }
         ),
         'call_wp_footer_before_body_close' => array(
