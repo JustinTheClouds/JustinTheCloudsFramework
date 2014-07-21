@@ -108,7 +108,7 @@ $JTCFDefaults = array(
             'wp_footer',
             function() {
                 // Google Analytics
-                if($_SERVER['HTTP_HOST'] != 'localhost' && of_get_option('apis_ga_id') && of_get_option('apis_ga_domain')) {
+                if($_SERVER['HTTP_HOST'] != 'localhost' && of_get_option('apisettings-google-analytics-id') && of_get_option('apisettings-google-analytics-domain')) {
                     echo '<!-- Google analytics-->';
                     echo '<script>
               (function(i,s,o,g,r,a,m){i[\'GoogleAnalyticsObject\']=r;i[r]=i[r]||function(){
@@ -1943,8 +1943,8 @@ if(!class_exists('JTCF')) {
             }
             
             // Google site verifier for google web master tools
-            if (true == of_get_option('header-meta-google-webmasters')) {
-                $output['google_site_verification'] = '<meta name="google-site-verification" content="' . of_get_option("meta_google") . '" />';
+            if (true == of_get_option('headermeta-google-webmasters')) {
+                $output['google_site_verification'] = '<meta name="google-site-verification" content="' . of_get_option("headermeta-google-webmasters") . '" />';
             }
 
             // Viewport
