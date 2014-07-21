@@ -1943,7 +1943,7 @@ if(!class_exists('JTCF')) {
             }
             
             // Google site verifier for google web master tools
-            if (true == of_get_option('meta_google')) {
+            if (true == of_get_option('header-meta-google-webmasters')) {
                 $output['google_site_verification'] = '<meta name="google-site-verification" content="' . of_get_option("meta_google") . '" />';
             }
 
