@@ -87,6 +87,13 @@ function of_get_option( $name, $default = false ) {
 	return $default;
 }
 
+function of_get_option_shortcode($atts) {
+    if(isset($atts['option'])) {
+        return of_get_option($atts['option']);
+    }
+}
+add_shortcode('of', 'of_get_option_shortcode');
+
 endif;
 
 if ( ! function_exists( 'of_get_options' ) ) :

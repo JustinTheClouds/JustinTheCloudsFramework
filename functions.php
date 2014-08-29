@@ -24,6 +24,7 @@ $JTCFDefaults = array(
         // Articles
         'author_link_title' => __('More articles written by %s', 'justintheclouds'),
         'entry_missing_excerpt_and_content' => '<b>' . __('The post "%s" seems to have no content or excerpt written yet!', 'justintheclouds') . '</b>',
+        'entry_edit_post_link_title' => __('Edit the %s %s', 'justintheclouds'),
         'posted_in' => __('Posted in:', 'justintheclouds'),
         // Comments
         'comments_title' => function() {
@@ -34,13 +35,17 @@ $JTCFDefaults = array(
         'comments_navigation' => __('Comment navigation', 'justintheclouds'),
         'comments_closed' => __('Comments are closed.', 'justintheclouds'),
         'comments_empty' => __('No Comments yet, your thoughts are welcome!', 'justintheclouds'),
+        // Titles
+        'titles_category' => __('Archive for the &#8216; %s &#8217; category', 'justintheclouds'),
         // Admin Options Page
         'Design' => __('Design', 'justintheclouds'),
         'Contact' => __('Contact', 'justintheclouds'),
         'Header Meta' => __('Header Meta', 'justintheclouds'),
         'Social' => __('Social', 'justintheclouds'),
         'API Settings' => __('API Settings', 'justintheclouds'),
-        'Microdata' => __('Microdata', 'justintheclouds')
+        'Microdata' => __('Microdata', 'justintheclouds'),
+        // Debug Bar
+        'debug_log_admin_bar_title' => 'Debugger'
     ),
     'folders'        => array(
         'styles'       => 'css',
@@ -151,7 +156,7 @@ $JTCFDefaults = array(
                     // TODO support swapping of theese lang vars
                     // If this is a category archive
                     } elseif (is_category()) {
-                        $title = __('Archive for the', 'justintheclouds') . " &#8216; " . single_cat_title('', false) . " &#8217; " . __('Category', 'justintheclouds');
+                        $title = JTCF::__('titles_category', single_cat_title('', false));
 
                     // If this is a tag archive
                     } elseif( is_tag() ) {
@@ -194,7 +199,7 @@ $JTCFDefaults = array(
                 $location = substr(JTCF::$currentLocation, 0, strrpos(JTCF::$currentLocation, "/"));
                 $location = substr(strrchr($location, "/"), 1);
                 // If this nav location exists
-                if(array_key_exists($location, JTCF::get('menus'))) {
+                if($location && array_key_exists($location, JTCF::get('menus'))) {
                     $defaults = array('container' => false, 'theme_location' => $location);
                     wp_nav_menu($defaults);
                 }
@@ -231,6 +236,12 @@ $JTCFDefaults = array(
             function() {
                 wp_footer();
             }
+        ),
+        'add_ajaxurl_variable' => array(
+            'wp_head',
+            function() {
+                echo '<script type="text/javascript">if(typeof ajaxurl == "undefined") var ajaxurl = "' . admin_url('admin-ajax.php') . '";</script>';
+            }
         )
     ),
     'filters' => array(
@@ -250,7 +261,7 @@ $JTCFDefaults = array(
                 }
 
                 // Add the site name.
-                $title .= get_bloginfo( 'name', 'display' );
+                $title .= ' ' . get_bloginfo( 'name', 'display' );
 
                 // Add the site description for the home/front page.
                 $site_description = get_bloginfo( 'description', 'display' );
@@ -279,7 +290,7 @@ $JTCFDefaults = array(
                 if($show == 'name') {
                 
                     // Home page should use h1
-                    if(is_home() || is_front_page()) {
+                    if(is_home() || is_front_page() || is_404()) {
                         $wrap = "h1";
                         JTCF::$_hasH1 = true;
                     } else {
@@ -291,7 +302,7 @@ $JTCFDefaults = array(
                     // Add itemprop if available
                     $output .= JTCF::getMicrodata('header', 'itemprop', 'url');
 
-                    $output .= '><span ' . ( of_get_option('design-logo') ? 'class="screen-reader-text" ' : '');
+                    $output .= '><span' . ( of_get_option('design-logo') ? ' class="screen-reader-text" ' : '');
 
                     // Add itemprop if available
                     $output .= JTCF::getMicrodata('header', 'itemprop', 'name');
@@ -316,7 +327,7 @@ $JTCFDefaults = array(
                         return;
                     }
                     // Homepage tagline should be h2
-                    if(is_home() || is_front_page()) {
+                    if(is_home() || is_front_page() || is_404()) {
                         $wrap = "h2";
                         JTCF::$_hasH2 = true;
                     } else {
@@ -372,7 +383,7 @@ $JTCFDefaults = array(
                 // Skip filters on admin
                 if(is_admin()) return $title;
                 
-                if(in_the_loop() && strpos(JTCF::$currentLocation, '/article') !== false) {
+                if(in_the_loop() && strpos(JTCF::$currentLocation, '/article/header') !== false) {
 
                     if(is_single() || is_page()) {
 
@@ -408,7 +419,7 @@ $JTCFDefaults = array(
                     } else {
                         return $post->post_excerpt;
                     }
-                } elseif(is_single()) {
+                } elseif(is_single() || is_page()) {
                     if(!empty($post->post_content)) {
                         $html = '<div' . JTCF::getClass('entry-content') . JTCF::getMicrodata('article', 'property', 'articleContent') . '>' . $html . '</div>';
                     } else {
@@ -455,7 +466,30 @@ $JTCFDefaults = array(
         'format_the_category' => array(
             'the_category',
             function($html) {
-                $html = JTCF::__('posted_in') . ' ' . str_replace(">", JTCF::getMicrodata('article', 'property', 'articleSection') . ">", $html);
+                if(is_page()) return;
+                $html = "<span" . JTCF::getClass('entry-meta-categories') . ">" . JTCF::__('posted_in') . ' ' . str_replace(">", JTCF::getMicrodata('article', 'property', 'articleSection') . ">", $html) . "</span>";
+                return $html;
+            }
+        ),
+        'format_the_tags' => array(
+            'the_tags' ,
+            function($html) {
+                if(is_page()) return;
+                $html = "<span" . JTCF::getClass('entry-meta-tags') . ">" . str_replace(">", JTCF::getMicrodata('article', 'property', 'articleSection') . ">", $html) . "</span>";
+                return $html;
+            }
+        ),
+        'format_post_edit_link' => array(
+            'edit_post_link' ,
+            function($html) {
+                $html = "<span" . JTCF::getClass('entry-meta-post-edit-link') . ">" . str_replace(">", JTCF::getMicrodata('article', 'property', 'articleSection') . ' title="' . JTCF::__('entry_edit_post_link_title', get_post_type(), get_the_title()) . '">', $html) . "</span>";
+                return $html;
+            }
+        ),
+        'format_comments_popup_link' => array(
+            'comments_popup_link' ,
+            function($html) {
+                $html = "<span" . JTCF::getClass('entry-meta-post-edit-link') . ">" . str_replace(">", JTCF::getMicrodata('article', 'property', 'articleSection') . ' title="' . JTCF::__('entry_edit_post_link_title', get_post_type(), get_the_title()) . '">', $html) . "</span>";
                 return $html;
             }
         ),
@@ -572,6 +606,23 @@ $JTCFDefaults = array(
             'do_shortcode'
         )
     ),
+    // TODO microdata and document
+    'shortcodes' => array(
+        'output_bloginfo' => array(
+            'bloginfo',
+            function($atts) {
+                if(isset($atts['option'])) {
+                    return get_bloginfo($atts['option']);
+                }
+            }
+        ),
+        'output_address_stamp' => array(
+            'address',
+            function() {
+                return '<p' . JTCF::getClass('contact-address') . '>' . of_get_option('contact-address') . '<br />' . of_get_option('contact-city') . ', ' . of_get_option('contact-state') . ' ' . of_get_option('contact-zip') . '</p>';
+            }
+        )
+    ),
     'menus' => array(
         'header'   => __( 'Top primary menu', 'justintheclouds' ),
         'footer' => __( 'Footer menu if different from primary', 'justintheclouds' ),
@@ -590,7 +641,6 @@ $JTCFDefaults = array(
                             return of_get_option('design-logo');
                         } else {
                             global $post;
-                            var_dump($post);
                         }
                     }
                 },
@@ -903,6 +953,7 @@ if(!class_exists('JTCF')) {
          */
         public static $_hasH1 = false;
         
+        // TODO doc me
         public static $currentLocation = '';
         
         /**
@@ -980,7 +1031,7 @@ if(!class_exists('JTCF')) {
             
             // Merge configs with default configs
             global $JTCFDefaults;
-            self::$_configs = self::arrayMergeRecursiveDistinct($JTCFDefaults, $configs);
+            self::$_configs = $configs ? self::arrayMergeRecursiveDistinct($JTCFDefaults, $configs) : $JTCFDefaults;
             
             // Log configs
             self::_debug(array(
@@ -1227,6 +1278,17 @@ if(!class_exists('JTCF')) {
             }
         }
         
+        private static function _runShortcodesSetup() {
+            if(count(self::$_configs['shortcodes'])) {
+                foreach(self::$_configs['shortcodes'] as $shortcode) {
+                    call_user_func_array('add_shortcode', array(
+                        $shortcode[0],
+                        $shortcode[1]
+                    ));
+                }
+            }
+        }
+        
         /**
          * Creates the menu for use in the admin panel and registers the menu
          * 
@@ -1424,6 +1486,9 @@ if(!class_exists('JTCF')) {
          * @since 1.0.0
          */
         public static function hookWPEnqueueScripts() {
+            // Load Comments	
+		    if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) wp_enqueue_script( 'comment-reply' );
+            
             // If any styles were added, register and enqueue
             if(count(self::$_configs['styles']) > 1) {
                 // Get style settings
@@ -1462,7 +1527,7 @@ if(!class_exists('JTCF')) {
                         call_user_func_array('wp_register_script', $script);
                         $script = $script[0];
                     } else {
-                        wp_register_script($script, get_stylesheet_directory_uri() . '/' . self::$_configs['folders']['scripts'] . '/' . strtolower($script) . '.css', array(), self::$theme->version);
+                        wp_register_script($script, get_stylesheet_directory_uri() . '/' . self::$_configs['folders']['scripts'] . '/' . strtolower($script) . '.js', array(), self::$theme->version);
                         wp_enqueue_script($script);
                     }
                     // Should we enqueue this script
@@ -2053,9 +2118,9 @@ if(!class_exists('JTCF')) {
     }
 }
 
-// TODO better Initialize framework
-//global $JTCF;
-//$JTCF = JTCF::getInstance();
+// Initialize the framework
+global $JTCF, $JTCFSettings;
+$JTCF = JTCF::getInstance($JTCFSettings);
 
 
 ?>

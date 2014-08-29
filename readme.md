@@ -47,12 +47,25 @@ Allows modification of actual HTML tag used as well has the attributes to be app
 
 This is the single filter that will allow you to alter all of the websites microdata. Three arguments will be passed in with the filtered data. $location, $type, $property. $location is where in the document the microdata is being placed. $type is the type of microdata which can be 'scope', 'meta', or 'itemprop'.
 
+### Custom Shortcodes
+
+JTCF automatically enables shortcodes inside of widgets.
+
+#### [bloginfo option="option-name"]
+
+A quick way to return bloginfo options inside of posts/pages/widgets.
+
+#### [of option="option-name"]
+
+A simple shortcode to retrieve theme options inside of posts and widgets.
+
+#### [address]
+
+A quick way of outputting a full address stamp. This pulls from the theme options > contact tab. Most small businesses need to place their address on their contact page and in their footers. This shortcode comes in handy.
+
 ## Changelog
 
-### 1.0.4
+### 1.0.6
 
-* Added archive-navigation class around pagination links
-
-### 1.0.5
-
-* Added JTCF_wp_list_comments filter
+* Added [bloginfo], [address], and [of] shortcodes
+* Added ajaxurl js variable
